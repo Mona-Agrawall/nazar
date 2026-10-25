@@ -1,6 +1,5 @@
 # Nazar - Keep an eye on what matters.
 
-> **Note:** Internal API routes, component filenames, and the repository URL retain the original 'Pulse' identifier; only the product-facing name changed to Nazar.
 ### Code, by Groww 2026 Submission
 
 Nazar is a smart market watchlist built around a single question: **"What changed while I was away, and does it actually matter?"**
@@ -30,11 +29,11 @@ The result: users scan their entire watchlist on every visit, manually comparing
 ### What Nazar Does Differently
 
 When a user returns to Nazar, the system:
-1. **Measures the exact time elapsed** since their last session (or a simulated absence)
+1. **Measures the time elapsed** since their last session (or a simulated absence)
 2. **Compares current market state against a per-user price snapshot** taken at their last visit — not just against yesterday's close
 3. **Runs a proprietary Attention Score** (0–100) for every watched stock, factoring in volume, volatility, technical breakouts, intraday reversals, and the personal delta since the user's last check
 4. **Surfaces a ranked, filterable view** of what changed meaningfully, ordered by attention score
-5. **Generates a human-readable narrative** (via Google Gemini or deterministic fallback) explaining *why* a move matters in institutional context
+5. **Generates a human-readable narrative** (via Google Gemini or a deterministic fallback) explaining *why* a move matters
 
 The output is a prioritised briefing, not a raw price feed.
 
@@ -64,7 +63,7 @@ User returns
 ## 2. Core Features
 
 ### Watchlist Management
-Create, rename, delete, and switch between multiple named watchlists. Add or remove stocks from a searchable universe (currently 14 symbols across NSE and NASDAQ). The default watchlist auto-initialises with major NIFTY 50 constituents for authenticated users via a PostgreSQL RPC.
+Create and switch between multiple named watchlists, and add or remove stocks from a searchable universe (currently 14 symbols across NSE and NASDAQ). The default watchlist auto-initialises with major NIFTY 50 constituents for authenticated users via a PostgreSQL RPC.
 
 ### Nazar Hero
 The primary entry screen. Surfaces the top 3 highest-attention stocks from the active watchlist, the total count of meaningful changes, and a plain-English summary narrative ("You were away for 7h 42m..."). This is the "what happened while I was away" answer.
@@ -79,22 +78,22 @@ Every stock card shows the exact price when the user last visited and the curren
 A chronological event feed showing *what happened and when* within the user's absence window. Each event has a mini price chart, an explanation, and can be acknowledged or dismissed. The timeline is scoped to the active watchlist.
 
 ### Stock Detail Modal
-Deep-dive on any stock: multi-timeframe SVG price charts (1D/1W/1M/1Y/ALL), day OHLC, 52-week range, 30-day range, market cap, P/E, volume analysis, and the AI-generated or fallback narrative explaining the move.
+Deep-dive on any stock: multi-timeframe SVG price charts (1D/1W/1M/1Y/ALL), volume bars, 30-day high, 52-week range, market cap, daily volatility, recent events, and a "why it matters" explanation.
 
 ### AI Explanation Layer (Google Gemini)
-For high-attention stocks, Gemini `gemini-3.6-flash` generates a concise 1–2 sentence explanation of the price action. Critically, the AI receives only pre-computed, deterministic facts — it is used only as a natural-language renderer, never as a data source. Hallucinations of financial figures are structurally prevented. If Gemini is unavailable or rate-limited, deterministic fallback narratives are served with no user-visible impact.
+For high-attention stocks, Gemini `gemini-3.6-flash` writes a concise 1–2 sentence narrative of the price action. The model receives only pre-computed, deterministic facts — it is used as a natural-language renderer, never as a data source. If Gemini is not configured, unavailable or rate-limited, deterministic narratives are served with no user-visible impact.
 
 ### Time Travel Simulator
 A developer/demo tool that sets the simulated `lastVisitTimestamp` to a chosen distance in the past (15m, 2h, 7h 42m, 24h, 3 days). It also adjusts the per-user price snapshot to match that moment, so the entire Attention Engine reacts as if the user genuinely was away for that period. This allows the full "you were away" flow to be demonstrated without waiting.
 
 ### Authentication + Demo Mode
-Full Supabase Auth (email/password) with server-side JWT verification. All watchlist endpoints enforce Row-Level Security so users can only access their own data. A "Skip For Now" button activates in-memory demo mode, bypassing auth entirely and using a server-side session object — useful for reviewers.
+Full Supabase Auth (email/password) with server-side JWT verification. All watchlist endpoints enforce Row-Level Security so users can only access their own data. A "Skip for now" button activates demo mode, which uses an in-memory, per-browser-tab session on the server (requires `VITE_DEMO_MODE=true` on the server) — useful for reviewers.
 
 ---
 
 ## 3. What Counts as a "Meaningful Change"?
 
-This is the core engineering problem Nazar addresses. The answer is implemented in `MeaningfulChangeEngine.calculateAttention()` in [`server/marketEngine.ts`](./server/marketEngine.ts).
+This is the core engineering problem Nazar addresses. The answer is implemented in `calculateAttention()` in [`server/services/attentionEngine.ts`](./server/services/attentionEngine.ts).
 
 ### Scoring Model
 
@@ -144,14 +143,11 @@ Landing screen presents email/password sign-in and sign-up. A "Skip for now" lin
 ### Navigation
 Four tabs in the header: **Nazar** (briefing + watchlist), **Watchlist** (watchlist standalone), **Timeline** (chronological event feed), **Indices** (NIFTY 50, SENSEX, BANK NIFTY, GIFT NIFTY cards).
 
-### Demo Mode Banner
-A persistent top bar indicates demo mode is active, displays the canonical scenario summary, and provides a "Reset Demo" button to restore the canonical 7h 42m scenario if the user has changed the time travel setting.
-
 ### Watchlist View
-Stocks are listed as rows with: symbol, company name, sector badge, current price, 24h change, attention score chip (colour-coded), a 24-point sparkline, and the personal delta chip ("since your last visit"). Rows are sortable by attention score. High-attention stocks float to the top.
+Stocks are listed as rows with: symbol, exchange, top scoring factor, the personal delta since your last visit, current price, 24h change, and the colour-coded attention score. Rows can be filtered and sorted by attention, % move, volume or symbol; by default high-attention stocks float to the top.
 
 ### Stock Card → Why Modal
-Each stock card has a "Why?" button that opens the `AttentionWhyModal`. This explains the score factors with individual point contributions and the AI/fallback narrative.
+Each stock card has a "Why?" button that opens the `AttentionWhyModal`. This explains the score factors with individual point contributions and a plain-English summary of why the stock matters.
 
 ### Command Search
 `Cmd/Ctrl+K` opens a keyboard-driven command palette for searching stocks, adding/removing from the current watchlist, and navigating.
@@ -162,32 +158,39 @@ Each stock card has a "Why?" button that opens the `AttentionWhyModal`. This exp
 
 ```mermaid
 graph TD
-    A[React 19 Frontend<br/>Vite + Tailwind v4 + Framer Motion] -->|REST JSON| B[Express Backend<br/>server.ts]
-    B -->|Token verification| C[Supabase Auth<br/>JWT validation via REST]
+    A[React 19 Frontend<br/>Vite + Tailwind v4 + Motion] -->|REST JSON| B[Express API<br/>server/app.ts]
+    B -->|Token verification| C[Supabase Auth<br/>server/middleware/auth.ts]
     B -->|RLS-enforced queries via user-scoped client| D[Supabase Postgres<br/>profiles / watchlists / watchlist_items / stocks]
-    B -->|Stateless calculations| E[MeaningfulChangeEngine<br/>Attention Scoring]
-    B -->|In-memory session state<br/>userSession object| F[Demo / Unauthenticated Mode<br/>Server-side session object]
-    B -->|Market data lookup| G{Data Provider}
-    G -->|Default| H[MockMarketDataProvider<br/>Deterministic seeded data]
-    G -->|MARKET_DATA_PROVIDER=twelve_data| I[TwelveDataProvider<br/>Twelve Data REST API]
-    I -->|Cache miss / error| H
-    B -->|Verified facts only| J[Google Gemini API<br/>gemini-3.6-flash]
-    J -->|Rate limit / error| K[Deterministic Fallback Narratives]
-    A -->|lastVisitTimestamp stored in sessionStorage| A
+    B -->|Stocks, events, summary| E[Market Service<br/>server/services/marketService.ts]
+    E -->|Scoring| F[Attention Engine<br/>attentionEngine.ts]
+    E -->|Narratives| G[Narrative Service<br/>narrativeService.ts]
+    G -->|High-attention stocks only| H[Google Gemini API<br/>gemini-3.6-flash]
+    G -->|No key / error / rate limit| I[Deterministic narratives]
+    E -->|Built-in prices & demo scenario| J[server/data/]
+    E -->|Symbol search| K{Search provider}
+    K -->|Default| L[MockMarketDataProvider]
+    K -->|MARKET_DATA_PROVIDER=twelve_data| M[TwelveDataProvider]
+    B -->|Demo / time travel state| N[Session Store<br/>in-memory, per browser tab]
 ```
 
 ### Component Responsibilities
 
 | Component | Responsibility |
 |-----------|---------------|
-| `server.ts` | Express router; all API endpoints; Vite dev middleware integration; demo/time-travel session management |
-| `server/marketEngine.ts` | Attention Scoring Engine, `MarketDataProvider` façade, `UserSessionState`, narrative generation, index and event data |
-| `server/supabaseRepo.ts` | All Supabase database operations; creates user-scoped clients per request to enforce RLS; admin client for stock seeding |
-| `server/authMiddleware.ts` | JWT Bearer token extraction; Supabase Auth verification; demo-mode bypass |
-| `server/providers/` | `IMarketDataProvider` interface implementations; `TwelveDataProvider` (live, with 60s cache + stale fallback); `MockMarketDataProvider` (deterministic) |
-| `src/services/api.ts` | Frontend API client; injects the Supabase session token on every request automatically |
-| `src/contexts/AuthContext.tsx` | Supabase auth state listener; exposes `isDemoMode`, `user`, `session`; `setDemoMode()` for the skip-auth flow |
-| `src/components/` | Stateless React UI components; receive data as props |
+| `server/app.ts` | Express app and every API route |
+| `server/index.ts` | Local entry point: starts the HTTP server with Vite (dev) or the built frontend (prod) |
+| `api/index.ts` | Vercel serverless entry point; re-exports the Express app |
+| `server/services/marketService.ts` | Builds enriched stocks, timeline events, the "while you were away" summary and stock detail |
+| `server/services/attentionEngine.ts` | The deterministic Attention Score |
+| `server/services/narrativeService.ts` | Gemini narratives with deterministic fallbacks and caching |
+| `server/services/sessionStore.ts` | Per-tab in-memory session: last-seen prices, away duration, time travel, sync, demo reset |
+| `server/db/supabaseRepository.ts` | All Supabase database operations; user-scoped clients enforce RLS |
+| `server/middleware/auth.ts` | JWT Bearer verification with Supabase Auth; demo-mode bypass |
+| `server/data/` | Stock universe and the canonical demo scenario (indices, events, watchlists) |
+| `server/providers/` | Symbol search providers and generated chart history |
+| `src/services/api.ts` | Frontend API client; attaches the Supabase token and the per-tab session ID |
+| `src/contexts/AuthContext.tsx` | Supabase auth state; exposes `user`, `isDemoMode`, `setDemoMode()` |
+| `src/components/` | React UI components; receive data and callbacks as props |
 
 ---
 
@@ -200,15 +203,16 @@ graph TD
 | Backend framework | Express 4 | Minimal, well-understood, no magic |
 | Language | TypeScript 5.8 | Full-stack type safety; shared `types.ts` between frontend and backend |
 | Styling | Tailwind CSS v4 | Utility-first; CSS variable design tokens for theming |
-| Animations | Framer Motion (motion/react) | Declarative `AnimatePresence` for modal transitions and stagger effects |
+| Animations | Motion (`motion/react`) | Declarative `AnimatePresence` for modal transitions and stagger effects |
 | Database | Supabase (Postgres) | Managed Postgres with built-in Auth and Row-Level Security; eliminates a separate auth service |
 | Authentication | Supabase Auth | Email/password with JWT; JWTs verified server-side on every request |
 | AI / LLM | Google Gemini (gemini-3.6-flash) | Narrative text only; structured fact injection prevents hallucination |
-| Live market data (optional) | Twelve Data REST API | Clean, affordable, supports multi-symbol batching |
-| Default market data | Deterministic mock provider | Zero API dependency for demos; realistic, seeded data |
+| Symbol search (optional) | Twelve Data REST API | Free symbol-search endpoint |
+| Market data | Built-in deterministic dataset | Zero API dependency for demos; realistic, reproducible data |
 | Icons | Lucide React | Consistent, lightweight |
-| Dev runner | tsx (ts-node equivalent) | Runs TypeScript server directly in dev without a build step |
-| Production build | esbuild (via Vite) | Fast CJS bundle for server; SPA bundle for frontend |
+| Dev runner | tsx | Runs the TypeScript server directly in dev without a build step |
+| Production build | Vite + esbuild | Vite bundles the SPA; esbuild bundles the server into `dist/server.cjs` |
+| Formatting | Prettier | One consistent code style (`npm run format`) |
 
 ---
 
@@ -219,15 +223,15 @@ graph TD
 ```
 Frontend: loadMarketData()
   → GET /api/watchlists (with Bearer token)
-     → authMiddleware validates JWT with Supabase Auth
-     → supabaseRepo.getWatchlists(token)
+     → requireAuth (server/middleware/auth.ts) validates the JWT with Supabase Auth
+     → supabaseRepository.getWatchlists(token)
         → Creates user-scoped Supabase client (RLS enforced)
         → Calls ensure_default_watchlist() RPC (idempotent)
         → Fetches watchlists + nested watchlist_items + stocks via Supabase join query
         → Fetches active_watchlist_id from profiles table
         → Returns formatted watchlists array + activeId
   → GET /api/market/stocks?watchlistId=X
-     → marketEngine.getStocks(symbols)
+     → marketService.getStocks(session, symbols)
         → For each symbol: computes attention score, user delta, sparkline, narrative
      → Returns enriched Stock[] array
   → GET /api/market/pulse?watchlistId=X
@@ -242,7 +246,7 @@ Frontend: updates all state, re-renders, polls again in 15 seconds
 ```
 Frontend: handleAddStock(symbol)
   → PUT /api/watchlists/:id { symbols: [...existing, newSymbol] }
-     → supabaseRepo.updateWatchlist(token, id, undefined, newSymbols)
+     → supabaseRepository.updateWatchlist(token, id, undefined, newSymbols)
         → Calls replace_watchlist_items() RPC atomically
            → Deletes all existing watchlist_items for this watchlist
            → Re-inserts all items (including new symbol) by resolving symbol → stock UUID
@@ -257,36 +261,30 @@ Note: add/remove is implemented as a full symbol-set replace via an atomic RPC. 
 The "return" flow is implicit — the attention engine does the work on every `/api/market/stocks` call.
 
 ```
-userSession.lastVisitTimestamp   ← set when user last synced (or on session init)
-userSession.userStockSnapshots   ← { symbol: { price, timestamp } } for each stock
+session.lastVisitTimestamp   ← set when the user last synced (or on session init)
+session.stockSnapshots       ← { symbol: { price, timestamp } } for each stock
 
 GET /api/market/stocks
   → For each stock:
-     previousPrice = userStockSnapshots[symbol].price
-     currentPrice  = BASE_STOCKS[symbol].basePrice  (or TwelveData if live)
+     previousPrice = stockSnapshots[symbol].price
+     currentPrice  = BASE_STOCKS[symbol].basePrice
      priceDiff     = currentPrice - previousPrice
      percentDiff   = (priceDiff / previousPrice) × 100
      awayStr       = formatDuration(simulatedAwaySeconds)
-  → MeaningfulChangeEngine.calculateAttention() runs with previousPrice
+  → calculateAttention() runs with previousPrice
   → Stock returned with attentionScore + userDelta { previousPrice, currentPrice, percentDiff, narrative }
 
 Frontend sorts stocks by attentionScore descending
 MarketPulseHero shows top 3 high-attention stocks + "You were away for X"
 ```
 
-### D. Market Data API Fails or Becomes Stale
+### D. External Services Fail
 
-The `TwelveDataProvider` handles failures in two layers:
+- **Gemini** errors, timeouts and `429` rate limits are caught in `buildStockNarrative()`, which then returns a deterministic narrative. Fallbacks are cached for only 30 seconds so Gemini is retried soon after it recovers.
+- **Twelve Data search** failures (HTTP or network errors) return an empty result list.
+- **Supabase seeding** on startup is fire-and-forget: a failure is logged and the server keeps running.
 
-1. **60-second in-memory quote cache.** If an API call succeeds, the result is cached. If the next call fails within 60 seconds, the cached (potentially stale) result is returned silently.
-
-2. **Stale cache fallback.** If a symbol is not in cache and the API fails (HTTP error, network error, or `429` rate limit), the provider calls `fallbackToStaleCache()` — which serves the most recent expired cache entry if available, or falls back to `MockMarketDataProvider` data for that symbol.
-
-3. **`429` rate-limit handling.** Twelve Data rate-limit responses are explicitly checked by status code. The error is logged but not surfaced to the user.
-
-The `FeedStatus` endpoint (`/api/market/status`) reports the current mode (`LIVE` or `DELAYED`) so the frontend can show a data-freshness indicator to users.
-
-If the backend itself crashes, the frontend catches the `loadMarketData` error and logs it — the UI remains at whatever state it last successfully loaded (no hard crash, no blank screen).
+If the backend itself fails, the frontend catches the `loadMarketData` error and logs it — the UI keeps the last state it successfully loaded (no hard crash, no blank screen).
 
 ---
 
@@ -298,70 +296,62 @@ If the backend itself crashes, the frontend catches the `loadMarketData` error a
 |------|-------|-----|
 | Watchlist structure (name, symbols) | Supabase `watchlists` + `watchlist_items` tables | Persists across sessions and devices |
 | Active watchlist selection | Supabase `profiles.active_watchlist_id` | Updated on every watchlist switch |
-| Stock master data | Supabase `stocks` table | Seeded on server startup via admin client |
+| Stock master data | Supabase `stocks` table | Seeded on server startup via the admin client |
 | User identity | Supabase Auth (email/password, JWT) | Standard token refresh flow |
 
-### Demo Mode (In-Memory)
+### Demo Mode (In-Memory, per Browser Tab)
 
-| What | Where | How |
-|------|-------|-----|
-| Watchlists | `userSession.watchlists` (Node.js process memory) | Lost on server restart |
-| Active watchlist | `userSession.activeWatchlistId` | Same |
-| Per-user price snapshot | `userSession.userStockSnapshots` | Stores { price, timestamp } per symbol |
-| Last visit timestamp | `userSession.lastVisitTimestamp` | Unix ms; controls away-duration calculation |
-| Dismissed/acknowledged events | `userSession.dismissedEventIds` / `acknowledgedEventIds` (Set) | In-memory; reset by demo reset |
+Each tab sends an `X-Session-Id` header; the server keeps one `UserSession` per ID in `server/services/sessionStore.ts`.
+
+| What | Field | Notes |
+|------|-------|-------|
+| Watchlists | `watchlists` | Lost on server restart |
+| Active watchlist | `activeWatchlistId` | Same |
+| Per-user price snapshot | `stockSnapshots` | `{ price, timestamp }` per symbol |
+| Last visit timestamp | `lastVisitTimestamp` | Unix ms; controls the away-duration calculation |
+| Dismissed/acknowledged events | `dismissedEventIds` / `acknowledgedEventIds` | Cleared by demo reset |
 
 ### Client-Side
 
 | What | Where |
 |------|-------|
-| Intro seen flag | `localStorage.pulse_intro_seen` |
-| Demo scenario initialised flag | `sessionStorage.pulse_demo_initialized_v2` |
-| Auth session token | Supabase client library handles (memory + persisted per Supabase SDK default) |
+| Intro seen flag | `localStorage.nazar_intro_seen` |
+| Per-tab session ID | `sessionStorage.nazar_session_id` |
+| Demo scenario initialised flag | `sessionStorage.nazar_demo_initialized` |
+| Auth session token | Managed by the Supabase client library |
 
-**Price snapshot baseline** is managed server-side, not in the browser. This means it survives client refreshes and tab switches. The snapshot is updated by the `/api/session/sync` endpoint (triggered by "Sync Now" button), which writes current prices to `userStockSnapshots`.
+**The price snapshot baseline** is managed server-side, not in the browser, so it survives page refreshes. "Mark Session as Read" calls `/api/session/sync`, which makes the current prices the new baseline.
 
 ---
 
 ## 9. Reliability & Edge Cases
 
-### Market Data Unavailable
-`TwelveDataProvider` falls back to stale cache, then to deterministic mock data. The backend never returns a 500 for a missing quote — it returns the best available approximation. The frontend's `FeedStatus` indicator communicates data freshness.
-
-### API Rate Limits (Twelve Data `429`)
-Explicitly handled. The provider catches the `code === 429` response, triggers `fallbackToStaleCache()`, and does not rethrow. Gemini rate limits (`429`) are caught in `MeaningfulChangeEngine.buildStockDeltaNarrative()` — the error branch silently falls through to the deterministic fallback narrative. No quota errors reach the user.
-
-### Stale Market Data
-The `FeedStatus` type includes `STALE` and `UNAVAILABLE` modes (defined in `types.ts`). Currently `TwelveDataProvider` reports `LIVE` while `MockMarketDataProvider` reports `DELAYED`. More granular staleness detection (e.g., timestamp age checks) is defined in the type system but not yet wired into the provider response.
-
 ### Invalid or Unknown Stock Symbol
-`/api/market/stocks/:symbol` returns HTTP 404 if `getStocks()` returns no result for the given symbol. The mock provider only knows about the 14 seeded symbols; Twelve Data search delegates to the Twelve Data search endpoint which is quota-free.
+`/api/market/stocks/:symbol` returns HTTP 404 for a symbol outside the 14-stock universe. Search results are also limited to that universe.
 
 ### Duplicate Stock in Watchlist
 Prevented client-side: `handleAddStock` checks `wl.symbols.includes(symbol)` before calling the API. Prevented server-side by the `replace_watchlist_items` RPC which does a `DELETE + INSERT ... ON CONFLICT DO NOTHING`.
 
 ### Deleting the Only / Default Watchlist
-The backend `supabaseRepo.deleteWatchlist()` fetches the watchlist's `is_default` flag before deleting and throws if true. For demo mode, the server checks `userSession.watchlists.length <= 1` and returns HTTP 400.
+The backend `supabaseRepository.deleteWatchlist()` fetches the watchlist's `is_default` flag before deleting and throws if true. For demo mode, the server checks `session.watchlists.length <= 1` and returns HTTP 400.
 
 ### Authentication Failure
-`authMiddleware.ts` returns HTTP 401 with a structured error body. The frontend's `api.ts` does not currently intercept 401s and redirect — it would surface as a failed data load. The `AuthContext` handles token expiry via Supabase's `onAuthStateChange` listener, which will set `user` to `null` and cause `AuthGate` to render `<AuthScreen />`.
+`server/middleware/auth.ts` returns HTTP 401 with a structured error body. The frontend's `api.ts` does not currently intercept 401s and redirect — it would surface as a failed data load. The `AuthContext` handles token expiry via Supabase's `onAuthStateChange` listener, which will set `user` to `null` and cause `AuthGate` to render `<AuthScreen />`.
 
 ### Concurrent Watchlist Updates
 The `replace_watchlist_items` PostgreSQL RPC replaces items atomically inside a single PL/pgSQL transaction. Concurrent calls will serialise at the database level. There is no optimistic locking on the watchlist itself.
 
 ### AI Narrative Failure
-If Gemini fails for any reason (API error, network timeout, rate limit, malformed response), `buildStockDeltaNarrative()` returns a deterministic string constructed from the pre-computed facts. The user receives a narrative regardless. The `source` field in the response (`gemini` vs `fallback`) is logged server-side.
-
-### Gemini Hallucination Prevention
-The Gemini prompt is structured as a strict fact-injection template. The API receives only numbers that were deterministically calculated before the prompt is built. The prompt explicitly instructs the model not to invent any numbers, prices, or events not present in the provided facts. A `maxOutputTokens: 80` cap prevents long, invention-prone responses.
+If Gemini fails for any reason (API error, network timeout, rate limit, empty response), `buildStockNarrative()` returns a deterministic narrative built from the pre-computed facts. The user always receives a narrative.
 
 ### Known Limitations
 
-- **Server-side session is process-scoped**: In production with multiple Node.js instances, the `userSession` object (demo mode, time travel) is not shared across instances. Authenticated users are not affected since their state is in Supabase.
+- **Server-side sessions are process-scoped**: with multiple Node.js instances (or serverless cold starts), the in-memory sessions (demo mode, time travel) are not shared. Authenticated users' watchlists are not affected since they live in Supabase.
 - **No real-time WebSocket feed**: The frontend polls every 15 seconds. There is no push mechanism for instant price updates.
-- **Historical chart data is always mocked**: Even when `MARKET_DATA_PROVIDER=twelve_data` is set, historical chart data (1D/1W/1M/1Y) uses the mock provider to avoid burning API rate limits. This is explicitly noted in `TwelveDataProvider.getHistoricalData()`.
-- **Per-user price snapshot is not persisted for authenticated users**: The `userStockSnapshots` object lives in the server's `userSession`. On server restart, authenticated users will lose their previous price baseline. The correct fix would be to persist the snapshot per user in the `profiles` table.
-- **14 supported symbols**: The stock universe is limited to 14 pre-seeded symbols. Adding an arbitrary symbol requires adding it to `BASE_STOCKS` in `marketEngine.ts`.
+- **Prices come from the built-in dataset**: current prices, volumes and ranges are defined in `server/data/stockUniverse.ts`. `MARKET_DATA_PROVIDER=twelve_data` only switches symbol search to Twelve Data.
+- **Chart history is generated**: 1D/1W/1M/1Y charts are deterministic, seeded series from `MockMarketDataProvider`.
+- **Per-user price snapshot is not persisted for authenticated users**: snapshots live in the in-memory session. The correct fix would be to persist them per user in the `profiles` table.
+- **14 supported symbols**: adding a symbol means adding it to `BASE_STOCKS` in `server/data/stockUniverse.ts`.
 - **Event feed is deterministic**: The Change Timeline events are hardcoded scenarios, not computed from live data.
 
 ---
@@ -370,7 +360,7 @@ The Gemini prompt is structured as a strict fact-injection template. The API rec
 
 ### Unified Express + Vite Server
 
-**Decision:** A single Node.js process serves both the Express API and the Vite dev middleware. In production, it serves the built SPA from `dist/`.
+**Decision:** Locally, a single Node.js process (`server/index.ts`) serves both the Express API and the Vite dev middleware; in production it serves the built SPA from `dist/`. On Vercel, `api/index.ts` exposes the same Express app as a serverless function.
 
 **Why:** Eliminates CORS configuration, simplifies deployment (one container, one port), and avoids managing two separate processes during development.
 
@@ -380,7 +370,7 @@ The Gemini prompt is structured as a strict fact-injection template. The API rec
 
 ### Attention Engine on the Server, Not the Client
 
-**Decision:** All score calculation happens in `server/marketEngine.ts`, not in the browser.
+**Decision:** All score calculation happens in `server/services/attentionEngine.ts`, not in the browser.
 
 **Why:** The engine needs access to authoritative baseline data (30-day averages, historical volatility, user snapshot prices). Keeping this computation server-side ensures all clients see a consistent score for the same stock, prevents score manipulation via client-side modification, and keeps the type model simple (the client receives a pre-computed `attentionScore` field).
 
@@ -388,13 +378,13 @@ The Gemini prompt is structured as a strict fact-injection template. The API rec
 
 ---
 
-### `IMarketDataProvider` Interface with Swappable Providers
+### `MarketDataProvider` Interface for Symbol Search
 
-**Decision:** Market data access is behind a formal interface with two implementations: `MockMarketDataProvider` and `TwelveDataProvider`. The active provider is selected at startup via an environment variable.
+**Decision:** Symbol search sits behind a small `MarketDataProvider` interface with two implementations — `MockMarketDataProvider` (default) and `TwelveDataProvider` — selected with `MARKET_DATA_PROVIDER`.
 
-**Why:** Decouples the business logic (attention scoring, delta computation) from the data source. This means the demo works without any API key, and switching to live data requires only a two-line `.env` change.
+**Why:** The demo works without any API key, and the data source can be swapped without touching the scoring or UI code.
 
-**Trade-off:** The abstraction adds a layer of indirection. More importantly, the `TwelveDataProvider`'s historical data endpoint intentionally throws (fallback is always used), which means the interface contract is partially broken for that method. This is a known limitation documented in the code.
+**Trade-off:** Only search is behind the interface today; prices still come from the built-in dataset. Live quotes would be the next method to add to the interface.
 
 ---
 
@@ -410,9 +400,9 @@ The Gemini prompt is structured as a strict fact-injection template. The API rec
 
 ### Gemini as an Explanation Layer, Not a Data Source
 
-**Decision:** Gemini receives only pre-computed numerical facts (percentage change, volume ratio, score, detected pattern types). It is asked only to render these facts in natural language. It is never asked to retrieve data, estimate prices, or make predictions.
+**Decision:** Gemini receives only pre-computed facts (price, percentage change, volume ratio, detected scoring factors). It is asked only to render these facts in natural language. It is never asked to retrieve data, estimate prices, or make predictions.
 
-**Why:** LLMs hallucinate financial numbers. A model that invents a price movement that didn't happen would be actively harmful in a financial context. By structurally separating the deterministic calculation layer from the language rendering layer, hallucinations of financial facts are impossible — the model cannot say a number that wasn't in the prompt because it was instructed not to, and the prompt only contains verified numbers.
+**Why:** LLMs hallucinate financial numbers. A model that invents a price movement that didn't happen would be actively harmful in a financial context. Separating the deterministic calculation layer from the language layer means the prompt only ever contains verified numbers.
 
 **Trade-off:** The narrative is less "intelligent" — Gemini can only rephrase what it was given. It cannot notice patterns, surface context from its training data, or explain macroeconomic causes. That is the correct trade-off: reliability over apparent sophistication.
 
@@ -420,7 +410,7 @@ The Gemini prompt is structured as a strict fact-injection template. The API rec
 
 ### Demo-First Architecture
 
-**Decision:** The server initialises to a canonical "7h 42m away" state on startup, including pre-set price snapshots and market events. A `POST /api/demo/reset` endpoint restores this state on demand.
+**Decision:** Every new session starts in a canonical "7h 42m away" state, including pre-set price snapshots and market events (`server/data/demoScenario.ts`). `POST /api/demo/reset` restores this state, and the frontend calls it on each tab's first visit.
 
 **Why:** Hackathon judges need to see the "you were away" experience immediately, without having to wait and come back. The canonical scenario is specifically designed to demonstrate all three attention score paths simultaneously: price surge with volume (RELIANCE), technical breakout (TCS), and intraday reversal (HDFCBANK).
 
@@ -432,27 +422,19 @@ The Gemini prompt is structured as a strict fact-injection template. The API rec
 
 ### Where AI Is Used
 
-`POST /api/ai/explain` — accepts a structured `facts` object and returns a single concise sentence of natural language explanation.
-
-`MeaningfulChangeEngine.buildStockDeltaNarrative()` — called during `getStocks()` for high-attention stocks. Uses Gemini if `GEMINI_API_KEY` is configured and the stock's attention level is `high`. Uses deterministic fallback otherwise.
+`buildStockNarrative()` in `server/services/narrativeService.ts` — called by `getStocks()` for every stock. It uses Gemini only when `GEMINI_API_KEY` is set, `GEMINI_ENABLED` is not `false`, and the stock's attention level is `high` (to preserve free-tier quota). All other cases get a deterministic narrative.
 
 ### Input and Output
 
-**Input (facts injected into prompt):**
-```
-Stock: RELIANCE (Reliance Industries Ltd)
-Price change since last visit: +3.80%
-Volume: 2.4× 30-day average
-Crossed 30-day high resistance
-Time since user's last check: 7h 42m
-Attention score: 87/100
-```
+**Input (facts injected into the prompt):** stock symbol, current price, percentage change since the last visit, volume relative to normal, and the labels of the detected scoring factors.
 
-**Output:** A single sentence (≤ 30 words) in plain English, no financial advice language, no invented figures.
+**Rules in the prompt:** no financial advice, no calculations (use only the data provided), at most two sentences, focus on why the move matters.
 
-### Fallback Handling
+### Caching and Fallback
 
-A 2-minute in-memory TTL cache (`narrativeCache` Map) prevents redundant Gemini calls for the same stock within a polling window. If Gemini returns an error (network, 429, API error), the function silently uses a deterministic fallback string constructed from the pre-computed facts. If the stock has a hardcoded fallback narrative in `FALLBACK_NARRATIVES` (server.ts), that is returned instead.
+An in-memory cache (`narrativeCache`) keeps Gemini narratives for 2 minutes to avoid redundant calls within a polling window. Deterministic fallbacks are cached for only 30 seconds so the app switches back to Gemini soon after it recovers.
+
+The "Why it matters" text in the stock modals comes from `POST /api/explain`, which returns a deterministic one-sentence explanation (`buildExplanation()`, using `EXPLANATIONS` in `server/data/demoScenario.ts`).
 
 ### What Is Not AI
 
@@ -464,9 +446,9 @@ The Attention Score (0–100) is **not AI**. It is a deterministic rule-based we
 
 | Method | Endpoint | Purpose | Auth Required |
 |--------|----------|---------|--------------|
-| `GET` | `/api/health` | System health, provider mode, Gemini availability | No |
+| `GET` | `/api/health` | System health, search provider, Gemini availability | No |
 | `GET` | `/api/market/indices` | NIFTY 50, SENSEX, BANK NIFTY, GIFT NIFTY | No |
-| `GET` | `/api/market/status` | Data feed mode and freshness | No |
+| `GET` | `/api/market/status` | Data feed mode shown in the header | No |
 | `GET` | `/api/market/stocks/all` | All 14 stocks (for search/add flow) | No |
 | `GET` | `/api/market/search?q=` | Symbol/name search | No |
 | `GET` | `/api/market/stocks?watchlistId=` | Enriched stocks for active watchlist | Yes |
@@ -479,12 +461,12 @@ The Attention Score (0–100) is **not AI**. It is a deterministic rule-based we
 | `POST` | `/api/watchlists` | Create watchlist | Yes |
 | `PUT` | `/api/watchlists/:id` | Update name, symbols, or active status | Yes |
 | `DELETE` | `/api/watchlists/:id` | Delete watchlist | Yes |
-| `POST` | `/api/ai/explain` | Generate Gemini narrative from facts | No |
+| `POST` | `/api/explain` | One-sentence "why it matters" explanation from facts | No |
 | `POST` | `/api/session/time-travel` | Simulate time elapsed | No |
 | `POST` | `/api/session/sync` | Reset baseline to current prices | No |
 | `POST` | `/api/demo/reset` | Restore canonical 7h 42m demo state | No |
 
-Authentication is Bearer JWT. All authenticated routes extract the token via `authMiddleware.ts`, verify it with Supabase Auth, and attach `req.user` and `req.token` to the request. Authenticated routes that receive a valid token use a user-scoped Supabase client (RLS enforced). Routes without a token in demo mode (`VITE_DEMO_MODE=true`) fall through to the in-memory `userSession`.
+Authentication is Bearer JWT. All authenticated routes extract the token via `requireAuth` (`server/middleware/auth.ts`), verify it with Supabase Auth, and attach `req.user` and `req.token` to the request. Authenticated routes that receive a valid token use a user-scoped Supabase client (RLS enforced). Routes without a token in demo mode (`VITE_DEMO_MODE=true`) fall through to the in-memory session for that browser tab (`X-Session-Id` header).
 
 ---
 
@@ -535,7 +517,7 @@ erDiagram
 
 ### Row-Level Security
 
-All tables have RLS enabled. Policies enforce that users can only `SELECT`, `INSERT`, `UPDATE`, and `DELETE` their own rows (via `auth.uid() = user_id`). The `stocks` table is readable by all authenticated users but writable only via the admin client (server-side seeding).
+All tables have RLS enabled. Policies enforce that users can only read and change their own profile, watchlists and watchlist items (via `auth.uid()`). The `stocks` table is readable by all authenticated users but writable only via the admin client (server-side seeding).
 
 ### PostgreSQL Functions (RPCs)
 
@@ -551,59 +533,71 @@ All tables have RLS enabled. Policies enforce that users can only `SELECT`, `INS
 ## 14. Project Structure
 
 ```text
-Pulse/
-├── server.ts                    # Express server, all API routes, Gemini endpoint
+├── api/
+│   └── index.ts                       # Vercel serverless entry (re-exports the Express app)
 ├── server/
-│   ├── marketEngine.ts          # Attention Scoring Engine, MarketDataProvider façade,
-│   │                            # UserSessionState, narrative generation, events, indices
-│   ├── authMiddleware.ts        # JWT extraction and Supabase Auth verification
-│   ├── supabaseRepo.ts          # All Supabase DB operations (user-scoped + admin client)
-│   └── providers/
-│       ├── MockMarketDataProvider.ts   # Deterministic seeded data (default)
-│       └── TwelveDataProvider.ts      # Twelve Data REST API with cache + fallback
+│   ├── index.ts                       # Local entry: HTTP server + Vite (dev) / built SPA (prod)
+│   ├── app.ts                         # Express app and every API route
+│   ├── middleware/
+│   │   └── auth.ts                    # JWT verification with Supabase Auth, demo-mode bypass
+│   ├── db/
+│   │   └── supabaseRepository.ts      # All Supabase queries (user-scoped clients enforce RLS)
+│   ├── services/
+│   │   ├── marketService.ts           # Enriched stocks, events, "while you were away" summary, stock detail
+│   │   ├── attentionEngine.ts         # Attention Score (0–100)
+│   │   ├── narrativeService.ts        # Gemini narratives + deterministic fallbacks
+│   │   └── sessionStore.ts            # In-memory per-tab sessions, time travel, sync, demo reset
+│   ├── data/
+│   │   ├── stockUniverse.ts           # The 14 supported stocks and their reference data
+│   │   └── demoScenario.ts            # Canonical demo: indices, timeline events, watchlists, explanations
+│   ├── providers/
+│   │   ├── types.ts                   # MarketDataProvider interface and data types
+│   │   ├── MockMarketDataProvider.ts  # Built-in search + generated chart history
+│   │   └── TwelveDataProvider.ts      # Symbol search via the Twelve Data API
+│   └── utils/
+│       └── formatDuration.ts          # 27720 seconds → "7h 42m"
 │
 ├── src/
-│   ├── App.tsx                  # Root component, routing, all state, data fetching
-│   ├── types.ts                 # Shared type definitions (Stock, MarketEvent, etc.)
-│   ├── index.css                # Design tokens, global styles
-│   ├── main.tsx                 # React entry point
+│   ├── main.tsx                       # React entry point
+│   ├── App.tsx                        # Auth gate, app state, data loading, layout
+│   ├── types.ts                       # Types shared by frontend and backend
+│   ├── index.css                      # Design tokens and global styles
 │   ├── services/
-│   │   └── api.ts               # Frontend API client (injects auth token automatically)
+│   │   └── api.ts                     # Frontend API client
 │   ├── lib/
-│   │   ├── supabase.ts          # Supabase frontend client initialisation
-│   │   ├── auth.ts              # Auth helper wrappers (signIn, signUp, signOut, getUser)
-│   │   └── marketDataTypes.ts   # IMarketDataProvider interface + QuoteData types
+│   │   ├── supabase.ts                # Supabase browser client
+│   │   └── auth.ts                    # signIn / signUp / signOut helpers
 │   ├── contexts/
-│   │   └── AuthContext.tsx      # Auth state provider; isDemoMode; setDemoMode()
+│   │   └── AuthContext.tsx            # Auth state provider, demo mode
 │   └── components/
-│       ├── MarketPulseHero.tsx   # "You were away" hero section + top attention cards
-│       ├── IntelligentWatchlist.tsx # Full watchlist table + filter + add/remove
-│       ├── ChangeTimeline.tsx    # Chronological event feed
-│       ├── StockDetailModal.tsx  # Deep-dive modal with charts and metrics
-│       ├── AttentionWhyModal.tsx # Score factor breakdown + AI narrative
-│       ├── AuthScreen.tsx        # Sign in / sign up form + skip-auth button
-│       ├── CommandSearch.tsx     # Cmd+K command palette
-│       ├── TimeTravelModal.tsx   # Away-duration simulation tool
-│       ├── CreateWatchlistModal.tsx # New watchlist creation
-│       ├── Header.tsx            # Navigation tabs, feed status, controls
-│       ├── MarketIndicesBar.tsx  # Scrolling index ticker
-│       ├── AnimatedPrice.tsx     # Flash-on-change price display
-│       ├── Sparkline.tsx         # Inline SVG price chart
-│       ├── AtmosphereField.tsx   # Background ambient particles
-│       ├── FirstOpenExperience.tsx # Cinematic intro animation
-│       └── ErrorBoundary.tsx     # React error boundary
+│       ├── Header.tsx                 # Navigation tabs, feed status, controls
+│       ├── MarketIndicesBar.tsx       # Index strip under the header
+│       ├── MarketPulseHero.tsx        # "While you were away" briefing + top attention cards
+│       ├── IntelligentWatchlist.tsx   # Watchlist table with filter, sort, add/remove
+│       ├── ChangeTimeline.tsx         # Chronological event feed
+│       ├── StockDetailModal.tsx       # Charts, metrics and events for one stock
+│       ├── AttentionWhyModal.tsx      # Score factor breakdown
+│       ├── CommandSearch.tsx          # Cmd/Ctrl+K command palette
+│       ├── TimeTravelModal.tsx        # Away-duration simulator
+│       ├── CreateWatchlistModal.tsx   # New watchlist form
+│       ├── AuthScreen.tsx             # Sign in / sign up + "Skip for now"
+│       ├── FirstOpenExperience.tsx    # Intro animation
+│       ├── AtmosphereField.tsx        # Background particles
+│       ├── AnimatedPrice.tsx          # Price that flashes on change
+│       ├── Sparkline.tsx              # Inline SVG mini chart
+│       └── ErrorBoundary.tsx          # React error boundary
 │
 ├── supabase/migrations/
-│   ├── 20260905_auth_trigger.sql        # handle_new_user trigger
-│   ├── 20260905_watchlist_schema.sql    # Tables + RLS policies
-│   ├── 20260905_watchlist_rpcs.sql      # PL/pgSQL functions
-│   └── 20260905_watchlist_complete.sql  # Combined safe migration script
+│   ├── 20260905000001_create_profiles.sql    # profiles table, RLS, sign-up trigger
+│   └── 20260905000002_create_watchlists.sql  # stocks / watchlists / items, RLS, RPCs
 │
-├── index.html                   # Entry HTML; Google Fonts (Roboto)
-├── vite.config.ts               # Vite config (React + Tailwind v4 plugins)
-├── tsconfig.json                # TypeScript config
-├── package.json                 # Dependencies and scripts
-└── .env.example                 # Required environment variable template
+├── public/                            # Logo and favicon
+├── index.html                         # HTML entry; Google Fonts (Roboto)
+├── vite.config.ts                     # Vite config (React + Tailwind v4 plugins)
+├── vercel.json                        # Routes /api/* to the serverless function
+├── tsconfig.json                      # TypeScript config
+├── .prettierrc                        # Code formatting rules
+└── .env.example                       # Environment variable template
 ```
 
 ---
@@ -612,8 +606,8 @@ Pulse/
 
 ### Prerequisites
 - Node.js ≥ 18
-- A Supabase project (free tier sufficient) with the migration scripts applied
-- A Google Gemini API key (optional; deterministic fallback works without it)
+- A Supabase project (free tier is enough)
+- A Google Gemini API key (optional; deterministic narratives work without it)
 
 ### Setup
 
@@ -624,43 +618,47 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env`:
+Fill in `.env` with your Supabase **Project URL**, **publishable (anon) key** and **secret (service_role) key** from *Project Settings → API*. Set `VITE_DEMO_MODE=true` if you want to use the app without signing in.
 
-```env
-GEMINI_API_KEY=your_gemini_key_here
+In the Supabase **SQL Editor**, run the two migration files in order:
 
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
-SUPABASE_SECRET_KEY=your_secret_key
-```
+1. `supabase/migrations/20260905000001_create_profiles.sql`
+2. `supabase/migrations/20260905000002_create_watchlists.sql`
 
-Apply Supabase migrations by running `supabase/migrations/20260905_watchlist_complete.sql` in your Supabase SQL Editor, followed by `20260905_auth_trigger.sql`.
+Both scripts are idempotent, so re-running them is safe.
 
 ```bash
 npm run dev
 ```
-```Login Credentials -
-Email - xyz@gmail.com
-Password - xyz12345
-
-or
-Email - abc@gmail.com
-Password - abc@gmail.com
 
 Open `http://localhost:3000`.
 
-Use **Skip for now** to enter demo mode without creating an account. Use the **Time Travel** tool in the header to simulate different absence durations. Use **Reset Demo** in the banner to restore the canonical scenario.
+Demo login credentials:
 
-### Live Data (Optional)
-
-To enable real market quotes via Twelve Data:
-
-```env
-MARKET_DATA_PROVIDER=twelve_data
-TWELVE_DATA_API_KEY=your_twelve_data_key
+```text
+Email: xyz@gmail.com     Password: xyz12345
+Email: abc@gmail.com     Password: abc@gmail.com
 ```
 
-Historical charts remain on mock data to preserve API credits.
+Use **Skip for now** to enter demo mode without an account. Use **Simulate** (header) or **Simulate Absence** (footer) to try different absence durations.
+
+### Scripts
+
+| Command | What it does |
+|---------|--------------|
+| `npm run dev` | Development server with hot reload on port 3000 |
+| `npm run build` | Builds the frontend into `dist/` and the server into `dist/server.cjs` |
+| `npm start` | Runs the production build |
+| `npm run typecheck` | TypeScript check (also flags unused code) |
+| `npm run format` | Formats the code with Prettier |
+
+### Optional Settings
+
+```env
+GEMINI_API_KEY=your_gemini_key     # AI narratives for high-attention stocks
+GEMINI_ENABLED=false               # keep the key but save quota
+MARKET_DATA_PROVIDER=twelve_data   # symbol search via Twelve Data
+```
 
 ---
 

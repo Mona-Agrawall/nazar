@@ -1,7 +1,4 @@
-@import "tailwindcss";
-
-/* ── Google Fonts ──────────────────────────────────────────────────────────── */
-/* Loaded via <link> in index.html for render-critical fonts */
+@import 'tailwindcss';
 
 /* ── Design Tokens ─────────────────────────────────────────────────────────── */
 @layer base {
@@ -10,30 +7,28 @@
     --font-mono: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 
     /* Primary Semantic Colors */
-    --color-green: #00B386;
-    --color-green-soft: #E7F8F1;
-    --color-red: #EB5B3C;
-    --color-red-soft: #FDEBE6;
-    --color-amber: #D9A400;
+    --color-green: #00b386;
+    --color-green-soft: #e7f8f1;
+    --color-red: #eb5b3c;
+    --color-red-soft: #fdebe6;
+    --color-amber: #d9a400;
 
     /* Typography & Ink */
-    --color-ink: #1A1A2E;
-    --color-ink-soft: #41424E;
-    --color-muted: #74777C;
-    --color-faint: #9B9EA3;
+    --color-ink: #1a1a2e;
+    --color-ink-soft: #41424e;
+    --color-muted: #74777c;
+    --color-faint: #9b9ea3;
 
     /* Surfaces & Borders */
-    --color-border: #E8E8EC;
-    --color-border-soft: #F1F1F4;
-    --color-panel: #FAFAFB;
-    --color-background: #FFFFFF;
+    --color-border: #e8e8ec;
+    --color-border-soft: #f1f1f4;
+    --color-panel: #fafafb;
+    --color-background: #ffffff;
 
     /* Motion */
     --ease-snappy: cubic-bezier(0.22, 1, 0.36, 1);
-    --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
     --duration-fast: 180ms;
     --duration-medium: 280ms;
-    --duration-slow: 420ms;
 
     /* Premium Shadows & Elevation */
     --shadow-premium: 0 4px 24px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.01);
@@ -64,7 +59,6 @@
 
   /* ── Reduced motion support ────────────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
-
     *,
     *::before,
     *::after {
@@ -103,57 +97,6 @@
 
 /* ── Animations ────────────────────────────────────────────────────────────── */
 
-/* Subtle breathing glow — used on live indicators */
-@keyframes pulse-glow {
-
-  0%,
-  100% {
-    opacity: 0.45;
-  }
-
-  50% {
-    opacity: 0.9;
-  }
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 3s var(--ease-standard) infinite;
-}
-
-/* Number counter morph animation */
-@keyframes number-up {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-number-up {
-  animation: number-up var(--duration-fast) var(--ease-snappy) both;
-}
-
-/* Card enter */
-@keyframes card-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-card-in {
-  animation: card-in var(--duration-medium) var(--ease-snappy) both;
-}
-
 /* Shimmer for loading skeletons */
 @keyframes shimmer {
   from {
@@ -166,33 +109,14 @@
 }
 
 .skeleton {
-  background: linear-gradient(90deg,
-      var(--color-border-soft) 25%,
-      var(--color-border) 50%,
-      var(--color-border-soft) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--color-border-soft) 25%,
+    var(--color-border) 50%,
+    var(--color-border-soft) 75%
+  );
   background-size: 800px 100%;
   animation: shimmer 1.5s infinite;
-}
-
-/* Ticker horizontal scroll */
-@keyframes ticker-scroll {
-  from {
-    transform: translateX(0);
-  }
-
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-.ticker-track {
-  display: flex;
-  animation: ticker-scroll 30s linear infinite;
-  will-change: transform;
-}
-
-.ticker-track:hover {
-  animation-play-state: paused;
 }
 
 /* ── Component Helpers ─────────────────────────────────────────────────────── */
@@ -202,15 +126,10 @@
   background: var(--color-background);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-premium);
-  transition: transform var(--duration-fast) var(--ease-snappy),
+  transition:
+    transform var(--duration-fast) var(--ease-snappy),
     box-shadow var(--duration-fast) var(--ease-snappy),
     border-color var(--duration-fast) var(--ease-snappy);
-}
-
-.premium-card-panel {
-  background: var(--color-panel);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-premium);
 }
 
 .premium-card:hover {
@@ -230,17 +149,6 @@
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: var(--shadow-premium);
-}
-
-/* Green glow — adapted for light mode (extremely subtle) */
-.glow-green {
-  box-shadow: 0 0 12px var(--color-green-soft),
-    0 0 4px rgba(0, 179, 134, 0.1);
-}
-
-/* Hairline separator */
-.hairline {
-  border-color: var(--color-border-soft);
 }
 
 /* Attention-level left border accent */
@@ -265,15 +173,6 @@
 /* Score bar fill transition */
 .score-fill {
   transition: width var(--duration-medium) var(--ease-snappy);
-}
-
-/* Demo mode banner top accent */
-.demo-banner {
-  background: linear-gradient(90deg,
-      transparent,
-      var(--color-green-soft),
-      transparent);
-  border-bottom: 1px solid var(--color-border);
 }
 
 /* Prose narrative body text */

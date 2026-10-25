@@ -1,43 +1,39 @@
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-import { BASE_STOCKS } from './marketEngine.js';
-
-dotenv.config();
+import { Watchlist } from '../../src/types.js';
+import { BASE_STOCKS } from '../data/stockUniverse.js';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY || '';
 
-// Helper to create a user-scoped client that strictly respects PostgreSQL RLS
-export function createUserClient(token: string) {
+// User-scoped client: every query runs as the user, so PostgreSQL Row-Level Security applies.
+function createUserClient(token: string) {
   return createClient(supabaseUrl, supabaseAnonKey, {
     global: {
       headers: {
-        Authorization: `Bearer ${token}`
-      }
-    }
+        Authorization: `Bearer ${token}`,
+      },
+    },
   });
 }
 
-// Admin client for server-side trusted tasks only
+// Admin client (bypasses RLS) — only used to seed the stocks table.
 const adminClient = createClient(supabaseUrl, supabaseSecretKey);
 
-export const supabaseRepo = {
+export const supabaseRepository = {
   /**
    * Seed the public.stocks table using Admin privileges.
    */
   async ensureStocksSeeded() {
     console.log('[Supabase] Verifying master stock data...');
-    const stocksToSeed = BASE_STOCKS.map(s => ({
+    const stocksToSeed = BASE_STOCKS.map((s) => ({
       symbol: s.symbol,
       name: s.name,
       exchange: s.exchange,
-      sector: s.sector
+      sector: s.sector,
     }));
 
-    const { error } = await adminClient
-      .from('stocks')
-      .upsert(stocksToSeed, { onConflict: 'symbol' });
+    const { error } = await adminClient.from('stocks').upsert(stocksToSeed, { onConflict: 'symbol' });
 
     if (error) {
       console.error('[Supabase] Failed to seed stocks:', error.message);
@@ -51,7 +47,7 @@ export const supabaseRepo = {
    */
   async getWatchlists(token: string) {
     const db = createUserClient(token);
-    
+
     // Attempt to init default watchlist — may fail if the user profile doesn't exist yet (expected in demo mode)
     const { error: initError } = await db.rpc('ensure_default_watchlist');
     if (initError && !initError.message.includes('foreign key')) {
@@ -61,7 +57,8 @@ export const supabaseRepo = {
     // Fetch watchlists
     const { data: watchlists, error } = await db
       .from('watchlists')
-      .select(`
+      .select(
+        `
         id,
         name,
         is_default,
@@ -70,31 +67,27 @@ export const supabaseRepo = {
         watchlist_items (
           stocks ( symbol )
         )
-      `)
+      `,
+      )
       .order('created_at', { ascending: true });
 
     if (error) throw error;
 
     // Fetch active watchlist ID from profile
-    const { data: profile } = await db
-      .from('profiles')
-      .select('active_watchlist_id')
-      .single();
+    const { data: profile } = await db.from('profiles').select('active_watchlist_id').single();
 
-    const formattedWatchlists = (watchlists || []).map((w: any) => ({
+    const formattedWatchlists: Watchlist[] = (watchlists || []).map((w: any) => ({
       id: w.id,
       name: w.name,
       isDefault: w.is_default,
       createdAt: new Date(w.created_at).getTime(),
       updatedAt: new Date(w.updated_at).getTime(),
-      symbols: w.watchlist_items
-        ?.map((item: any) => item.stocks?.symbol)
-        .filter(Boolean) || []
+      symbols: w.watchlist_items?.map((item: any) => item.stocks?.symbol).filter(Boolean) || [],
     }));
 
     return {
       watchlists: formattedWatchlists,
-      activeId: profile?.active_watchlist_id || formattedWatchlists[0]?.id || null
+      activeId: profile?.active_watchlist_id || formattedWatchlists[0]?.id || null,
     };
   },
 
@@ -106,7 +99,7 @@ export const supabaseRepo = {
     const { data, error } = await db.rpc('create_watchlist_with_items', {
       p_name: name,
       p_symbols: symbols,
-      p_is_default: false
+      p_is_default: false,
     });
 
     if (error) throw error;
@@ -128,17 +121,19 @@ export const supabaseRepo = {
         const { data: wl } = await db.from('watchlists').select('name').eq('id', watchlistId).single();
         finalName = wl?.name || 'Updated Watchlist';
       }
-      
+
       const { error } = await db.rpc('replace_watchlist_items', {
         p_watchlist_id: watchlistId,
         p_name: finalName,
-        p_symbols: symbols || []
+        p_symbols: symbols || [],
       });
       if (error) throw error;
     }
 
     if (setActive) {
-      const { data: { user } } = await db.auth.getUser();
+      const {
+        data: { user },
+      } = await db.auth.getUser();
       if (user) {
         await db.from('profiles').update({ active_watchlist_id: watchlistId }).eq('id', user.id);
       }
@@ -146,7 +141,7 @@ export const supabaseRepo = {
 
     // Return the updated shape by re-fetching
     const { watchlists } = await this.getWatchlists(token);
-    return watchlists.find(w => w.id === watchlistId);
+    return watchlists.find((w) => w.id === watchlistId);
   },
 
   /**
@@ -154,7 +149,7 @@ export const supabaseRepo = {
    */
   async deleteWatchlist(token: string, watchlistId: string) {
     const db = createUserClient(token);
-    
+
     // First, check if it's the default watchlist (RLS might allow delete, but app logic forbids)
     const { data: wl } = await db.from('watchlists').select('is_default').eq('id', watchlistId).single();
     if (wl?.is_default) {
@@ -166,14 +161,16 @@ export const supabaseRepo = {
 
     // We must return the new active ID (fallback to first available)
     const { watchlists } = await this.getWatchlists(token);
-    let newActiveId = watchlists[0]?.id || null;
-    
+    const newActiveId = watchlists[0]?.id || null;
+
     // Update profile if active was deleted
-    const { data: { user } } = await db.auth.getUser();
+    const {
+      data: { user },
+    } = await db.auth.getUser();
     if (user && newActiveId) {
       await db.from('profiles').update({ active_watchlist_id: newActiveId }).eq('id', user.id);
     }
-    
+
     return newActiveId;
-  }
+  },
 };

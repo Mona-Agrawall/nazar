@@ -1,6 +1,5 @@
--- 20260905_watchlist_complete.sql
--- Run this ENTIRE script in your Supabase SQL Editor.
--- It safely creates/updates all tables, constraints, policies, and RPCs in the correct order.
+-- Stocks, watchlists and watchlist items, with Row-Level Security and atomic RPCs.
+-- Safe to re-run: every statement is idempotent. Run after 20260905000001_create_profiles.sql.
 
 -- ==========================================
 -- 1. TABLES & CONSTRAINTS
