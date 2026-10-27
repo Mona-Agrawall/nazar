@@ -9,7 +9,8 @@
     "start": "node dist-server/server.cjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "format": "prettier --write src server api vite.config.ts"
+    "test": "tsx --test \"tests/**/*.test.ts\"",
+    "format": "prettier --write src server api tests vite.config.ts"
   },
   "dependencies": {
     "@google/genai": "^2.21.0",

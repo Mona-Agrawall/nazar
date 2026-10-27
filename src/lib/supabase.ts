@@ -1,8 +1,9 @@
 import { SupabaseClient, createClient } from '@supabase/supabase-js';
 
-// These variables are injected by Vite at build/dev time
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+// These variables are injected by Vite at build/dev time (import.meta.env is absent when tests run under Node)
+const env: Partial<ImportMetaEnv> = import.meta.env ?? {};
+const supabaseUrl = env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 

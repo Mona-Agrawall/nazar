@@ -3,6 +3,7 @@ import { motion, useInView } from 'motion/react';
 import { ArrowUpRight, ArrowDownRight, Clock, CheckCircle, ChevronRight, AlertCircle, HelpCircle } from 'lucide-react';
 import { MarketEvent, MarketPulse, Stock } from '../types';
 import { Sparkline } from './Sparkline';
+import { eventIdsToAcknowledge, eventsForStock, isStockAcknowledged } from '../lib/pulseAck';
 import { currencySymbol } from '../lib/currency';
 
 interface MarketPulseHeroProps {
@@ -367,18 +368,12 @@ export const MarketPulseHero: React.FC<MarketPulseHeroProps> = ({
   const volatilitySymbol = stocks.find((s) => s.changePercent24h < -1.5 || s.volumeRatio >= 2)?.symbol || 'None';
 
   // Cards represent stocks; acknowledging a card acknowledges that stock's timeline events.
-  const eventsFor = (symbol: string) => events.filter((ev) => ev.stockSymbol === symbol && !ev.dismissed);
-  const isAcknowledged = (symbol: string) => {
-    const stockEvents = eventsFor(symbol);
-    return stockEvents.length > 0 && stockEvents.every((ev) => ev.acknowledged);
-  };
+  const isAcknowledged = (symbol: string) => isStockAcknowledged(events, symbol);
   const ackHandler = (symbol: string) => {
-    if (eventsFor(symbol).length === 0) return undefined;
+    if (eventsForStock(events, symbol).length === 0) return undefined;
     return (e: React.MouseEvent) => {
       e.stopPropagation();
-      eventsFor(symbol)
-        .filter((ev) => !ev.acknowledged)
-        .forEach((ev) => onAcknowledgeEvent(ev.id));
+      eventIdsToAcknowledge(events, symbol).forEach((id) => onAcknowledgeEvent(id));
     };
   };
 
