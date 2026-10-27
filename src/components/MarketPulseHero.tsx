@@ -406,7 +406,11 @@ export const MarketPulseHero: React.FC<MarketPulseHeroProps> = ({
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold leading-tight text-[var(--color-ink)] mb-6">
           {getGreeting()}
           <br />
-          <span className="text-[var(--color-muted)]">{pulse.meaningfulChangesCount} things changed meaningfully.</span>
+          <span className="text-[var(--color-muted)]">
+            {pulse.meaningfulChangesCount === 0
+              ? 'Nothing changed meaningfully.'
+              : `${pulse.meaningfulChangesCount} ${pulse.meaningfulChangesCount === 1 ? 'thing' : 'things'} changed meaningfully.`}
+          </span>
         </h1>
 
         {/* Editorial stat strip */}

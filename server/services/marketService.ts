@@ -172,8 +172,13 @@ export async function getMarketPulse(session: UserSession, watchlistSymbols: str
   const events = getEvents(session, watchlistSymbols).filter((e) => !e.dismissed);
   const awayFormatted = formatDuration(session.simulatedAwaySeconds);
 
-  const highAttentionCount = stocks.filter((s) => s.attentionScore >= 65).length;
-  const meaningfulCount = Math.max(3, highAttentionCount);
+  const meaningfulStocks = stocks
+    .filter((s) => s.attentionScore >= 65)
+    .sort((a, b) => b.attentionScore - a.attentionScore);
+  const meaningfulCount = meaningfulStocks.length;
+  const highlights = meaningfulStocks
+    .slice(0, 3)
+    .map((s) => `${s.symbol} ${s.userDelta.percentDiff >= 0 ? '+' : ''}${s.userDelta.percentDiff.toFixed(1)}%`);
   const avgChange = stocks.reduce((sum, s) => sum + s.userDelta.percentDiff, 0) / (stocks.length || 1);
 
   return {
@@ -188,7 +193,10 @@ export async function getMarketPulse(session: UserSession, watchlistSymbols: str
     eventsCount: events.length,
     overallWatchlistChange: Number(avgChange.toFixed(2)),
     topHighlights: events.slice(0, 4),
-    narrativeSummary: `You were away for ${awayFormatted}. ${meaningfulCount} things changed meaningfully across your watchlist. RELIANCE gained +3.8% on 2.4× volume, TCS breached its 30-day resistance, while HDFCBANK reversed intraday (-2.7%).`,
+    narrativeSummary:
+      meaningfulCount === 0
+        ? `You were away for ${awayFormatted}. Nothing in your watchlist changed meaningfully.`
+        : `You were away for ${awayFormatted}. ${meaningfulCount} ${meaningfulCount === 1 ? 'thing' : 'things'} changed meaningfully across your watchlist: ${highlights.join(', ')}.`,
   };
 }
 
