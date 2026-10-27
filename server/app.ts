@@ -303,6 +303,11 @@ app.post('/api/demo/reset', (req, res) => {
   });
 });
 
+// Unknown API routes get a JSON 404 instead of falling through to the SPA's index.html.
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
 // JSON errors without stack traces (must be registered after all routes).
 app.use(errorHandler);
 
