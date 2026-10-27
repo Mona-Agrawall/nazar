@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, FolderPlus, Check } from 'lucide-react';
 import { Stock } from '../types';
 import { currencySymbol } from '../lib/currency';
+import { useEscapeKey } from '../lib/useEscapeKey';
 
 interface CreateWatchlistModalProps {
   isOpen: boolean;
@@ -20,6 +21,8 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
   const [name, setName] = useState('');
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>(['RELIANCE', 'TCS']);
   const [submitting, setSubmitting] = useState(false);
+
+  useEscapeKey(onClose, isOpen);
 
   if (!isOpen) return null;
 

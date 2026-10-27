@@ -14,6 +14,7 @@ import {
 import { Stock, AttentionFactor } from '../types';
 import { api } from '../services/api';
 import { currencySymbol } from '../lib/currency';
+import { useEscapeKey } from '../lib/useEscapeKey';
 
 interface AttentionWhyModalProps {
   stock: Stock | null;
@@ -42,14 +43,7 @@ export const AttentionWhyModal: React.FC<AttentionWhyModalProps> = ({ stock, onC
   const [explanation, setExplanation] = useState<string | null>(null);
   const [isExplanationLoading, setIsExplanationLoading] = useState(false);
 
-  // Close on Escape
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscapeKey(onClose, !!stock);
 
   // Fetch the explanation whenever a different stock opens
   useEffect(() => {

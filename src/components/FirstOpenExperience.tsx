@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowRight, Activity } from 'lucide-react';
+import { useEscapeKey } from '../lib/useEscapeKey';
 
 interface FirstOpenExperienceProps {
   onComplete: () => void;
@@ -11,15 +12,7 @@ export const FirstOpenExperience: React.FC<FirstOpenExperienceProps> = ({ onComp
   const [phase, setPhase] = useState<'drawing' | 'morphing' | 'completed'>('drawing');
   const [stageText, setStageText] = useState('Initializing Market Feed...');
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onComplete();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onComplete]);
+  useEscapeKey(onComplete);
 
   useEffect(() => {
     const canvas = canvasRef.current;

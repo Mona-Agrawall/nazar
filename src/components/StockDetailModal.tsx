@@ -16,6 +16,7 @@ import {
 import { StockDetailExtended, Timeframe, PricePoint } from '../types';
 import { api } from '../services/api';
 import { currencySymbol } from '../lib/currency';
+import { useEscapeKey } from '../lib/useEscapeKey';
 
 interface StockDetailModalProps {
   symbol: string | null;
@@ -45,14 +46,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
   const [reloadKey, setReloadKey] = useState(0);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
-  // Escape key
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   // Load stock detail, then its explanation
   useEffect(() => {

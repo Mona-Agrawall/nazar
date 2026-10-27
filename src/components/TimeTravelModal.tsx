@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Clock, X, Star } from 'lucide-react';
+import { useEscapeKey } from '../lib/useEscapeKey';
 
 interface TimeTravelModalProps {
   isOpen: boolean;
@@ -17,15 +18,7 @@ export const TimeTravelModal: React.FC<TimeTravelModalProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
 
-  // Keyboard dismiss
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [isOpen, onClose]);
+  useEscapeKey(onClose, isOpen);
 
   if (!isOpen) return null;
 

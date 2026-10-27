@@ -4,6 +4,7 @@ import { Search, Plus, Check, X } from 'lucide-react';
 import { Stock } from '../types';
 import { api } from '../services/api';
 import { currencySymbol } from '../lib/currency';
+import { useEscapeKey } from '../lib/useEscapeKey';
 
 const SEARCH_DEBOUNCE_MS = 200;
 
@@ -27,6 +28,8 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const latestRequestRef = useRef(0);
+
+  useEscapeKey(onClose, isOpen);
 
   useEffect(() => {
     if (isOpen) {
@@ -64,9 +67,7 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
       // ⌘K / Ctrl+K is handled by App, which toggles this dialog.
       if (!isOpen) return;
 
-      if (e.key === 'Escape') {
-        onClose();
-      } else if (e.key === 'ArrowDown') {
+      if (e.key === 'ArrowDown') {
         e.preventDefault();
         setSelectedIndex((prev) => (prev + 1) % Math.max(1, results.length));
       } else if (e.key === 'ArrowUp') {
