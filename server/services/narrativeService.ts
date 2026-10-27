@@ -1,8 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
 import { AttentionFactor } from '../../src/types.js';
 
-const GEMINI_MODEL = 'gemini-3.6-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 const GEMINI_CACHE_MS = 2 * 60 * 1000;
+// Narratives are generated inside API requests, so Gemini gets a short budget before the fallback is used.
+const GEMINI_TIMEOUT_MS = 3000;
 // Fallbacks are cached briefly so the app switches to Gemini soon after it recovers.
 const FALLBACK_CACHE_MS = 30 * 1000;
 
@@ -19,6 +21,7 @@ function cacheNarrative(key: string, text: string, expiresAt: number) {
   }
   narrativeCache.set(key, { text, expiresAt });
 }
+const inFlight = new Map<string, Promise<string>>();
 let geminiClient: GoogleGenAI | null = null;
 
 function getGeminiClient(): GoogleGenAI {
@@ -43,15 +46,35 @@ export interface NarrativeInput {
  * (to save quota); every other case gets a deterministic narrative.
  */
 export async function buildStockNarrative(input: NarrativeInput): Promise<string> {
+  const { symbol, currentPrice, previousPrice, volumeRatio, attentionLevel } = input;
+  const cacheKey = [symbol, previousPrice, currentPrice, volumeRatio, input.awayDurationStr, attentionLevel].join('|');
+  const cached = narrativeCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.text;
+
+  // Concurrent requests for the same narrative share one generation (and one Gemini call).
+  let pending = inFlight.get(cacheKey);
+  if (!pending) {
+    pending = generateNarrative(input, cacheKey).finally(() => inFlight.delete(cacheKey));
+    inFlight.set(cacheKey, pending);
+  }
+  return pending;
+}
+
+/** Rejects if the promise has not settled within `ms`, so a slow upstream cannot block the API response. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+async function generateNarrative(input: NarrativeInput, cacheKey: string): Promise<string> {
   const { symbol, currentPrice, previousPrice, volumeRatio, attentionLevel, factors } = input;
   const diff = currentPrice - previousPrice;
   const pct = (diff / previousPrice) * 100;
   const sign = pct >= 0 ? '+' : '';
-
   const now = Date.now();
-  const cacheKey = [symbol, previousPrice, currentPrice, volumeRatio, input.awayDurationStr, attentionLevel].join('|');
-  const cached = narrativeCache.get(cacheKey);
-  if (cached && cached.expiresAt > now) return cached.text;
 
   const useGemini = process.env.GEMINI_API_KEY && attentionLevel === 'high' && process.env.GEMINI_ENABLED !== 'false';
 
@@ -72,7 +95,10 @@ export async function buildStockNarrative(input: NarrativeInput): Promise<string
         3. Never output more than 2 sentences.
         4. Focus on the 'why' and 'what it means' based on the factors provided.`;
 
-      const response = await getGeminiClient().models.generateContent({ model: GEMINI_MODEL, contents: prompt });
+      const response = await withTimeout(
+        getGeminiClient().models.generateContent({ model: GEMINI_MODEL, contents: prompt }),
+        GEMINI_TIMEOUT_MS,
+      );
       if (response.text) {
         cacheNarrative(cacheKey, response.text, now + GEMINI_CACHE_MS);
         return response.text;
