@@ -3,7 +3,6 @@ import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import { AppTab, Stock, MarketIndex, MarketEvent, Watchlist, MarketPulse, FeedStatus } from './types';
 import { api } from './services/api';
 import { createSerialQueue } from './lib/serialQueue';
-import { AtmosphereField } from './components/AtmosphereField';
 import { FirstOpenExperience } from './components/FirstOpenExperience';
 import { Header } from './components/Header';
 import { MarketIndicesBar } from './components/MarketIndicesBar';
@@ -297,9 +296,6 @@ function Dashboard() {
       className="relative min-h-screen bg-[var(--color-background)] text-[var(--color-ink)] flex flex-col font-sans selection:bg-[var(--color-green-soft)] selection:text-[var(--color-green)]"
       role="main"
     >
-      {/* Background depth particles */}
-      <AtmosphereField />
-
       {/* Cinematic intro */}
       <AnimatePresence>{showFirstOpen && <FirstOpenExperience onComplete={handleCompleteIntro} />}</AnimatePresence>
 
@@ -385,24 +381,16 @@ function Dashboard() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="max-w-5xl mx-auto px-4 sm:px-6 py-8"
+              className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
             >
-              <div className="text-[10px] uppercase tracking-[0.4em] text-[var(--color-faint)] mb-2 font-medium">
-                Macro Overview
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-normal text-[var(--color-ink)] mb-2">Market Benchmarks</h2>
-              <p className="text-xs text-[var(--color-muted)] mb-8 font-normal">
-                Core macro indices providing broad liquidity, directional bias, and valuation framing.
-              </p>
+              <h2 className="text-2xl font-medium text-[var(--color-ink)]">Indices</h2>
+              <p className="text-sm text-[var(--color-muted)] mt-1 mb-6">Benchmark indices for the Indian market.</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {indices.map((idx) => (
-                  <div
-                    key={idx.symbol}
-                    className="p-6 rounded-2xl bg-[var(--color-panel)] border border-[var(--color-border-soft)] hover:border-[var(--color-border)] transition-all shadow-sm"
-                  >
+                  <div key={idx.symbol} className="p-6 rounded-lg border border-[var(--color-border)]">
                     <div className="flex items-start justify-between">
                       <div>
-                        <span className="text-[10px] uppercase text-[var(--color-faint)] font-mono">{idx.symbol}</span>
+                        <span className="text-xs text-[var(--color-faint)] font-mono">{idx.symbol}</span>
                         <h3 className="text-xl font-normal text-[var(--color-ink)] mt-0.5">{idx.name}</h3>
                       </div>
                       <div className="text-right">
@@ -418,7 +406,7 @@ function Dashboard() {
                         </span>
                       </div>
                     </div>
-                    <div className="mt-6 pt-4 border-t border-[var(--color-border-soft)] flex items-center justify-between text-[11px] text-[var(--color-muted)] font-mono">
+                    <div className="mt-6 pt-4 border-t border-[var(--color-border-soft)] flex items-center justify-between text-xs text-[var(--color-muted)] font-mono">
                       <span>Low: {idx.low.toLocaleString('en-IN')}</span>
                       <span>High: {idx.high.toLocaleString('en-IN')}</span>
                     </div>
@@ -431,16 +419,16 @@ function Dashboard() {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-[var(--color-border)] bg-[var(--color-background)] py-6 px-4">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[var(--color-muted)]">
+      <footer className="relative z-10 border-t border-[var(--color-border)] bg-[var(--color-background)] py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[var(--color-muted)]">
           <div className="flex items-center gap-2.5">
-            <span className="font-mono text-[var(--color-ink-soft)] font-medium text-xs">NAZAR 2026</span>
+            <span className="font-medium text-[var(--color-ink)]">© 2026 Nazar</span>
             <span className="text-[var(--color-border)]">|</span>
-            <span className="font-normal text-[var(--color-muted)] text-[11px]">
-              Intelligent Market Attention · Meaningful Change Engine
+            <span className="font-normal text-[var(--color-muted)] text-xs">
+              What changed while you were away, and whether it matters
             </span>
           </div>
-          <div className="flex items-center gap-4 text-[10px] uppercase font-mono">
+          <div className="flex items-center gap-4 text-xs font-mono">
             <span>Simulated demo data · not real prices</span>
             <span className="text-[var(--color-border)]">·</span>
             <button

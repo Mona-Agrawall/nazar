@@ -43,19 +43,19 @@ export const ChangeTimeline: React.FC<ChangeTimelineProps> = ({
     switch (importance) {
       case 'critical':
         return (
-          <span className="px-2 py-0.5 rounded bg-[var(--color-red-soft)] text-[var(--color-red)] text-[10px] font-mono uppercase font-medium ">
+          <span className="px-2 py-0.5 rounded bg-[var(--color-red-soft)] text-[var(--color-red)] text-xs font-mono font-medium ">
             Critical
           </span>
         );
       case 'high':
         return (
-          <span className="px-2 py-0.5 rounded bg-[var(--color-amber)]/10 text-[var(--color-amber)] text-[10px] font-mono uppercase font-medium ">
+          <span className="px-2 py-0.5 rounded bg-[var(--color-amber)]/10 text-[var(--color-amber)] text-xs font-mono font-medium ">
             High Impact
           </span>
         );
       default:
         return (
-          <span className="px-2 py-0.5 rounded bg-[var(--color-panel)] text-[var(--color-muted)] text-[10px] font-mono uppercase border border-[var(--color-border-soft)]">
+          <span className="px-2 py-0.5 rounded bg-[var(--color-panel)] text-[var(--color-muted)] text-xs font-mono border border-[var(--color-border-soft)]">
             Notice
           </span>
         );
@@ -63,24 +63,19 @@ export const ChangeTimeline: React.FC<ChangeTimelineProps> = ({
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-8">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.4em] text-[var(--color-faint)] mb-2 font-medium">
-            Timeline Dispatch
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-normal text-[var(--color-ink)] ">Chronological Shift Log</h2>
-          <p className="text-xs text-[var(--color-muted)] mt-1 font-normal">
-            Deterministic sequence of technical and fundamental shifts during your absence.
-          </p>
+          <h2 className="text-2xl font-medium text-[var(--color-ink)]">Timeline</h2>
+          <p className="text-sm text-[var(--color-muted)] mt-1">What happened while you were away, newest first.</p>
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 bg-[var(--color-panel)] p-1 rounded-full border border-[var(--color-border-soft)] self-start sm:self-auto">
+        {/* Filter chips */}
+        <div className="flex items-center gap-2 self-start sm:self-auto" role="group" aria-label="Filter events">
           {(
             [
-              { id: 'all', label: 'All Events' },
+              { id: 'all', label: 'All events' },
               { id: 'critical', label: 'Critical' },
               { id: 'breakouts', label: 'Breakouts' },
               { id: 'volume', label: 'Surges' },
@@ -89,10 +84,11 @@ export const ChangeTimeline: React.FC<ChangeTimelineProps> = ({
             <button
               key={f.id}
               onClick={() => setActiveFilter(f.id)}
-              className={`px-3 py-1 rounded-full text-[10px] uppercase font-semibold transition-colors ${
+              aria-pressed={activeFilter === f.id}
+              className={`h-8 px-3.5 rounded-full border text-sm transition-colors ${
                 activeFilter === f.id
-                  ? 'bg-[var(--color-background)] text-[var(--color-ink)] shadow-sm border border-[var(--color-border)]'
-                  : 'text-[var(--color-muted)] hover:text-[var(--color-ink)]'
+                  ? 'border-[var(--color-green)] bg-[var(--color-green-soft)] text-[var(--color-green)] font-medium'
+                  : 'border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-ink)]'
               }`}
             >
               {f.label}
@@ -103,7 +99,7 @@ export const ChangeTimeline: React.FC<ChangeTimelineProps> = ({
 
       {/* Timeline Stream */}
       {filteredEvents.length === 0 ? (
-        <div className="text-center py-16 rounded-2xl bg-[var(--color-panel)] border border-[var(--color-border-soft)] text-[var(--color-muted)]">
+        <div className="text-center py-16 rounded-lg bg-[var(--color-panel)] border border-[var(--color-border-soft)] text-[var(--color-muted)]">
           <CheckCircle2 className="w-8 h-8 text-[var(--color-green)] mx-auto mb-2 opacity-60" />
           <p className="text-sm font-normal">All changes have been acknowledged or filtered.</p>
         </div>
@@ -131,10 +127,10 @@ export const ChangeTimeline: React.FC<ChangeTimelineProps> = ({
                   role="button"
                   tabIndex={0}
                   aria-label={`${evt.stockSymbol}: ${evt.title} (${evt.change}). Open details.`}
-                  className={`group relative p-6 rounded-2xl border transition-all duration-200 cursor-pointer ${
+                  className={`group relative p-6 rounded-lg border transition-all duration-200 cursor-pointer ${
                     isAck
                       ? 'bg-[var(--color-panel)] border-[var(--color-border-soft)] opacity-60'
-                      : 'bg-[var(--color-background)] hover:bg-[var(--color-panel)] border-[var(--color-border)] hover:border-[var(--color-muted)] shadow-sm'
+                      : 'bg-[var(--color-background)] hover:bg-[var(--color-panel)] border-[var(--color-border)] hover:border-[var(--color-muted)]'
                   }`}
                 >
                   {/* Timeline Anchor Dot */}
@@ -188,7 +184,7 @@ export const ChangeTimeline: React.FC<ChangeTimelineProps> = ({
                     <div>
                       {evt.miniChart && evt.miniChart.length > 0 && (
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] uppercase text-[var(--color-faint)] font-mono">Trajectory</span>
+                          <span className="text-xs text-[var(--color-faint)] font-mono">Trajectory</span>
                           <Sparkline
                             data={evt.miniChart}
                             width={70}
@@ -203,7 +199,7 @@ export const ChangeTimeline: React.FC<ChangeTimelineProps> = ({
                     <div className="flex items-center gap-2">
                       <button
                         onClick={(e) => handleAck(evt.id, e)}
-                        className={`flex items-center gap-1 px-3 py-1 rounded-full text-[11px] uppercase font-semibold transition-colors ${
+                        className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                           isAck
                             ? 'text-[var(--color-green)] bg-[var(--color-green-soft)]'
                             : 'text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-border-soft)]'

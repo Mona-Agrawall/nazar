@@ -162,7 +162,7 @@ Each stock card has a "Why?" button that opens the `AttentionWhyModal`. This exp
 `Cmd/Ctrl+K` toggles a keyboard-driven command palette: search by symbol, company name, sector or tag (with quick filters: Tata, Banking, Tech, Energy, EV), open a stock with ↑/↓ and Enter, or add/remove it from the current watchlist. Search is debounced and ignores out-of-order responses.
 
 ### Accessibility
-Dialogs trap keyboard focus and return it to the opener when closed, and Escape closes only the topmost dialog or popover. Watchlist rows, briefing cards, timeline cards and the header controls are reachable with Tab and open with Enter/Space; search results are navigated with the arrow keys. With the OS "reduce motion" setting, animations are disabled and the background and intro canvases draw a single static frame.
+Dialogs trap keyboard focus and return it to the opener when closed, and Escape closes only the topmost dialog or popover. Watchlist rows, briefing cards, timeline cards and the header controls are reachable with Tab and open with Enter/Space; search results are navigated with the arrow keys. With the OS "reduce motion" setting, animations are disabled and the intro canvas draws a single static frame.
 
 ---
 
@@ -647,7 +647,6 @@ On top of RLS:
 │       ├── CreateWatchlistModal.tsx   # New watchlist form
 │       ├── AuthScreen.tsx             # Sign in / sign up + "Skip for now"
 │       ├── FirstOpenExperience.tsx    # Intro animation
-│       ├── AtmosphereField.tsx        # Background particles
 │       ├── AnimatedPrice.tsx          # Price that flashes on change
 │       ├── Sparkline.tsx              # Inline SVG mini chart
 │       └── ErrorBoundary.tsx          # React error boundary
@@ -661,7 +660,7 @@ On top of RLS:
 │
 ├── tests/                             # Regression tests (npm test)
 ├── public/                            # Logo and favicon
-├── index.html                         # HTML entry; Google Fonts (Roboto)
+├── index.html                         # HTML entry; Google Fonts (Inter)
 ├── vite.config.ts                     # Vite config (React + Tailwind v4 plugins)
 ├── vercel.json                        # Routes /api/* to the serverless function; security headers
 ├── tsconfig.json                      # TypeScript config (strict)

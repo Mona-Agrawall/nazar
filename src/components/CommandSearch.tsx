@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Search, Plus, Check, X } from 'lucide-react';
 import { Stock } from '../types';
 import { api } from '../services/api';
-import { currencySymbol } from '../lib/currency';
+import { currencySymbol, formatPrice } from '../lib/currency';
 import { useEscapeKey } from '../lib/useEscapeKey';
 import { useFocusTrap } from '../lib/useFocusTrap';
 
@@ -99,7 +99,7 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 px-4 bg-[var(--color-ink)]/10 backdrop-blur-md"
+        className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 px-4 bg-black/40"
         onClick={onClose}
         role="dialog"
         aria-modal="true"
@@ -110,7 +110,7 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: -8 }}
           transition={{ duration: 0.18 }}
-          className="w-full max-w-xl rounded-2xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-2xl overflow-hidden"
+          className="w-full max-w-xl rounded-lg bg-[var(--color-background)] border border-[var(--color-border)] shadow-[var(--shadow-float)] overflow-hidden"
           ref={panelRef}
           tabIndex={-1}
           onClick={(e) => e.stopPropagation()}
@@ -134,19 +134,19 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
                 <X className="w-4 h-4" />
               </button>
             )}
-            <kbd className="px-2 py-0.5 text-[10px] font-mono text-[var(--color-muted)] bg-[var(--color-panel)] rounded border border-[var(--color-border-soft)]">
+            <kbd className="px-2 py-0.5 text-xs font-mono text-[var(--color-muted)] bg-[var(--color-panel)] rounded border border-[var(--color-border-soft)]">
               ESC
             </kbd>
           </div>
 
           {/* Quick Tag Recommendations */}
-          <div className="px-5 py-2.5 border-b border-[var(--color-border-soft)] bg-[var(--color-panel)] flex items-center gap-2 overflow-x-auto text-[11px]">
-            <span className="text-[var(--color-faint)] font-mono text-[10px] uppercase ">Filter:</span>
+          <div className="px-5 py-2.5 border-b border-[var(--color-border-soft)] bg-[var(--color-panel)] flex items-center gap-2 overflow-x-auto text-xs">
+            <span className="text-[var(--color-faint)] font-mono text-xs ">Filter:</span>
             {['All', 'Tata', 'Banking', 'Tech', 'Energy', 'EV'].map((tag) => (
               <button
                 key={tag}
                 onClick={() => handleSearch(tag === 'All' ? '' : tag)}
-                className="px-2.5 py-0.5 rounded-full bg-[var(--color-background)] border border-[var(--color-border)] hover:bg-[var(--color-border-soft)] text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors text-[10px] font-mono uppercase"
+                className="px-2.5 py-0.5 rounded-full bg-[var(--color-background)] border border-[var(--color-border)] hover:bg-[var(--color-border-soft)] text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors text-xs font-mono"
               >
                 {tag}
               </button>
@@ -173,24 +173,24 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
                       onSelectStock(stock.symbol);
                       onClose();
                     }}
-                    className={`flex items-center justify-between p-3.5 rounded-xl transition-all cursor-pointer ${
+                    className={`flex items-center justify-between p-3.5 rounded-md transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-[var(--color-panel)] text-[var(--color-ink)]'
                         : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-border-soft)]'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[var(--color-background)] border border-[var(--color-border)] shadow-sm flex items-center justify-center font-mono text-xs font-medium text-[var(--color-ink)]">
+                      <div className="w-8 h-8 rounded-lg bg-[var(--color-background)] border border-[var(--color-border)] flex items-center justify-center font-mono text-xs font-medium text-[var(--color-ink)]">
                         {stock.symbol.slice(0, 2)}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-medium text-sm text-[var(--color-ink)]">{stock.symbol}</span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-[var(--color-panel)] border border-[var(--color-border-soft)] text-[var(--color-muted)] font-mono">
+                          <span className="text-xs px-1.5 py-0.2 rounded bg-[var(--color-panel)] border border-[var(--color-border-soft)] text-[var(--color-muted)] font-mono">
                             {stock.exchange}
                           </span>
                           {stock.attentionScore >= 75 && (
-                            <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--color-green-soft)] text-[var(--color-green)] font-mono font-medium">
+                            <span className="text-xs px-2 py-0.5 rounded bg-[var(--color-green-soft)] text-[var(--color-green)] font-mono font-medium">
                               Attention {stock.attentionScore}
                             </span>
                           )}
@@ -203,10 +203,10 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
                       <div className="text-right">
                         <span className="font-mono text-sm font-medium text-[var(--color-ink)] block">
                           {currencySymbol(stock.exchange)}
-                          {stock.currentPrice.toFixed(2)}
+                          {formatPrice(stock.currentPrice)}
                         </span>
                         <span
-                          className={`font-mono text-[11px] font-medium ${
+                          className={`font-mono text-xs font-medium ${
                             isPos ? 'text-[var(--color-green)]' : 'text-[var(--color-red)]'
                           }`}
                         >
@@ -238,7 +238,7 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
           </div>
 
           {/* Footer Guide */}
-          <div className="p-3 bg-[var(--color-panel)] border-t border-[var(--color-border-soft)] flex items-center justify-between text-[11px] text-[var(--color-faint)] font-mono">
+          <div className="p-3 bg-[var(--color-panel)] border-t border-[var(--color-border-soft)] flex items-center justify-between text-xs text-[var(--color-faint)] font-mono">
             <div className="flex items-center gap-3">
               <span>↑↓ Navigate</span>
               <span>↵ Open</span>

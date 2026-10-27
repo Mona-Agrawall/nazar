@@ -10,28 +10,22 @@ export const MarketIndicesBar: React.FC<MarketIndicesBarProps> = ({ indices }) =
   if (!indices || indices.length === 0) return null;
 
   return (
-    <div className="w-full border-b border-[var(--color-border)] bg-[var(--color-background)] overflow-x-auto py-3 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 min-w-max">
-        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-normal text-[var(--color-muted)] font-medium mr-2">
-          <span>Indices</span>
-        </div>
-
-        <div className="flex items-center gap-3 sm:gap-6 flex-1 justify-between">
+    <div className="w-full border-b border-[var(--color-border)] bg-[var(--color-background)] overflow-x-auto py-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-max lg:min-w-0" aria-label="Market indices">
+        <div className="grid grid-cols-4 gap-4">
           {indices.map((idx) => {
             const isPos = idx.change >= 0;
             return (
               <div
                 key={idx.symbol}
-                className="flex items-center gap-3 px-3.5 py-2 rounded-xl bg-[var(--color-panel)] hover:bg-[var(--color-background)] border border-[var(--color-border-soft)] hover:border-[var(--color-border)] transition-colors"
+                className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg border border-[var(--color-border)]"
               >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-[var(--color-ink)] ">{idx.name}</span>
-                    <span className="text-[11px] font-mono text-[var(--color-muted)]">
-                      {idx.value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </span>
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-[var(--color-ink)] whitespace-nowrap">{idx.name}</div>
+                  <div className="text-base font-mono font-medium text-[var(--color-ink)] mt-0.5 whitespace-nowrap">
+                    {idx.value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </div>
-                  <div className="flex items-center gap-1 text-[10px] font-mono mt-0.5">
+                  <div className="text-xs font-mono whitespace-nowrap">
                     <span className={isPos ? 'text-[var(--color-green)]' : 'text-[var(--color-red)]'}>
                       {isPos ? '+' : ''}
                       {idx.change.toFixed(2)} ({isPos ? '+' : ''}

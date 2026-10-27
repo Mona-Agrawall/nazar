@@ -43,11 +43,6 @@ export const AuthScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-ink)] flex flex-col items-center justify-center p-4 selection:bg-[var(--color-green-soft)] selection:text-[var(--color-green)]">
-      {/* Premium subtle background glow */}
-      <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
-        <div className="absolute top-[20%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[var(--color-border-soft)] rounded-full blur-[120px] opacity-40 mix-blend-multiply" />
-      </div>
-
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -55,20 +50,21 @@ export const AuthScreen: React.FC = () => {
         className="w-full max-w-md relative z-10"
       >
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center mb-6">
-            <span className="font-mono text-xl font-medium text-[var(--color-ink)]">NAZAR</span>
+          <div className="inline-flex items-center justify-center gap-2.5 mb-6">
+            <img src="/nazar-favicon.png" alt="" className="w-9 h-9 object-contain" />
+            <span className="text-2xl font-semibold tracking-tight text-[var(--color-ink)]">Nazar</span>
           </div>
-          <h1 className="text-3xl font-normal text-[var(--color-ink)] mb-2">
+          <h1 className="text-2xl font-medium text-[var(--color-ink)] mb-2">
             {isLogin ? 'Welcome back.' : 'Join Nazar.'}
           </h1>
           <p className="text-[var(--color-muted)] text-sm">
             {isLogin
-              ? 'Enter your credentials to access your market intelligence.'
+              ? 'Sign in to see what changed while you were away.'
               : 'Create your account to start tracking meaningful changes.'}
           </p>
         </div>
 
-        <div className="bg-[var(--color-panel)] border border-[var(--color-border)] rounded-2xl p-6 sm:p-8 shadow-sm">
+        <div className="bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg p-6 sm:p-8">
           <AnimatePresence mode="wait">
             {isEmailSent ? (
               <motion.div
@@ -80,7 +76,7 @@ export const AuthScreen: React.FC = () => {
                 <div className="w-12 h-12 bg-[var(--color-green-soft)] rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-6 h-6 text-[var(--color-green)]" />
                 </div>
-                <h3 className="text-lg font-semibold text-[var(--color-ink)] mb-2">Check your email</h3>
+                <h3 className="text-lg font-medium text-[var(--color-ink)] mb-2">Check your email</h3>
                 <p className="text-sm text-[var(--color-muted)] mb-6">
                   We sent a confirmation link to <strong className="font-medium">{email}</strong>. Please click the link
                   to activate your account.
@@ -122,15 +118,13 @@ export const AuthScreen: React.FC = () => {
 
                 {!isLogin && (
                   <div>
-                    <label className="block text-xs uppercase text-[var(--color-faint)] font-medium mb-1.5 ml-1">
-                      Display Name
-                    </label>
+                    <label className="block text-sm text-[var(--color-ink)] font-medium mb-1.5">Name</label>
                     <div className="relative">
                       <input
                         type="text"
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
-                        className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--color-ink)] focus:outline-none focus:border-[var(--color-green)] focus:ring-1 focus:ring-[var(--color-green)] transition-all placeholder:text-[var(--color-border)]"
+                        className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-md px-4 py-2.5 text-sm text-[var(--color-ink)] focus:outline-none focus:border-[var(--color-green)] transition-all placeholder:text-[var(--color-faint)]"
                         placeholder="How should we call you?"
                       />
                     </div>
@@ -138,9 +132,7 @@ export const AuthScreen: React.FC = () => {
                 )}
 
                 <div>
-                  <label className="block text-xs uppercase text-[var(--color-faint)] font-medium mb-1.5 ml-1">
-                    Email Address
-                  </label>
+                  <label className="block text-sm text-[var(--color-ink)] font-medium mb-1.5">Email</label>
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-faint)]" />
                     <input
@@ -148,16 +140,14 @@ export const AuthScreen: React.FC = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-xl pl-10 pr-4 py-2.5 text-sm text-[var(--color-ink)] focus:outline-none focus:border-[var(--color-green)] focus:ring-1 focus:ring-[var(--color-green)] transition-all placeholder:text-[var(--color-border)]"
+                      className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-md pl-10 pr-4 py-2.5 text-sm text-[var(--color-ink)] focus:outline-none focus:border-[var(--color-green)] transition-all placeholder:text-[var(--color-faint)]"
                       placeholder="you@example.com"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs uppercase text-[var(--color-faint)] font-medium mb-1.5 ml-1">
-                    Password
-                  </label>
+                  <label className="block text-sm text-[var(--color-ink)] font-medium mb-1.5">Password</label>
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-faint)]" />
                     <input
@@ -166,7 +156,7 @@ export const AuthScreen: React.FC = () => {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       minLength={6}
-                      className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-xl pl-10 pr-4 py-2.5 text-sm text-[var(--color-ink)] focus:outline-none focus:border-[var(--color-green)] focus:ring-1 focus:ring-[var(--color-green)] transition-all placeholder:text-[var(--color-border)]"
+                      className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-md pl-10 pr-4 py-2.5 text-sm text-[var(--color-ink)] focus:outline-none focus:border-[var(--color-green)] transition-all placeholder:text-[var(--color-faint)]"
                       placeholder="••••••••"
                     />
                   </div>
@@ -175,13 +165,13 @@ export const AuthScreen: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2 bg-[var(--color-ink)] hover:bg-[var(--color-ink-soft)] text-white rounded-xl py-3 text-sm font-medium transition-colors mt-6 disabled:opacity-70"
+                  className="w-full flex items-center justify-center gap-2 bg-[var(--color-green)] hover:bg-[var(--color-green-hover)] text-white rounded-md py-3 text-sm font-medium transition-colors mt-6 disabled:opacity-70"
                 >
                   {isLoading ? (
                     <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      {isLogin ? 'Sign In' : 'Create Account'}
+                      {isLogin ? 'Sign in' : 'Create account'}
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, Activity } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useEscapeKey } from '../lib/useEscapeKey';
 
 interface FirstOpenExperienceProps {
@@ -66,7 +66,7 @@ export const FirstOpenExperience: React.FC<FirstOpenExperienceProps> = ({ onComp
       ctx.clearRect(0, 0, width, height);
 
       // 1. Subtle financial grid lines
-      ctx.strokeStyle = `rgba(26, 26, 46, ${0.05 * progress})`;
+      ctx.strokeStyle = `rgba(68, 71, 91, ${0.05 * progress})`;
       ctx.lineWidth = 1;
       const gridRows = 8;
       const gridCols = 12;
@@ -93,7 +93,7 @@ export const FirstOpenExperience: React.FC<FirstOpenExperienceProps> = ({ onComp
         const p = pathPoints[i];
         const barHeight = p.vol * 1.1 * progress;
         const barY = height - barHeight - 40;
-        ctx.fillStyle = i > 80 ? 'rgba(0, 179, 134, 0.4)' : 'rgba(26, 26, 46, 0.08)';
+        ctx.fillStyle = i > 80 ? 'rgba(4, 180, 136, 0.4)' : 'rgba(68, 71, 91, 0.08)';
         ctx.fillRect(p.x - 2, barY, 4, barHeight);
       }
 
@@ -101,9 +101,9 @@ export const FirstOpenExperience: React.FC<FirstOpenExperienceProps> = ({ onComp
       if (visibleIndex > 0) {
         // Line styling
         ctx.save();
-        ctx.shadowColor = '#00B386'; // var(--color-green)
+        ctx.shadowColor = '#04B488'; // var(--color-green)
         ctx.shadowBlur = 12;
-        ctx.strokeStyle = '#00B386';
+        ctx.strokeStyle = '#04B488';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(pathPoints[0].x, pathPoints[0].y);
@@ -122,7 +122,7 @@ export const FirstOpenExperience: React.FC<FirstOpenExperienceProps> = ({ onComp
 
         ctx.beginPath();
         ctx.arc(head.x, head.y, 9, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(0, 179, 134, 0.6)';
+        ctx.strokeStyle = 'rgba(4, 180, 136, 0.6)';
         ctx.lineWidth = 1.2;
         ctx.stroke();
 
@@ -131,12 +131,12 @@ export const FirstOpenExperience: React.FC<FirstOpenExperienceProps> = ({ onComp
           const pt = pathPoints[i];
           ctx.beginPath();
           ctx.arc(pt.x, pt.y, 2, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(26, 26, 46, 0.7)'; // var(--color-ink)
+          ctx.fillStyle = 'rgba(68, 71, 91, 0.7)'; // var(--color-ink)
           ctx.fill();
 
           if (pt.text) {
-            ctx.font = '11px "Space Mono", monospace';
-            ctx.fillStyle = 'rgba(26, 26, 46, 0.85)';
+            ctx.font = '500 11px Inter, sans-serif';
+            ctx.fillStyle = 'rgba(68, 71, 91, 0.85)';
             ctx.fillText(pt.text, pt.x + 8, pt.y - 10);
           }
         }
@@ -173,13 +173,8 @@ export const FirstOpenExperience: React.FC<FirstOpenExperienceProps> = ({ onComp
         {/* Top brand header */}
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[var(--color-panel)] border border-[var(--color-border-soft)] flex items-center justify-center">
-              <Activity className="w-4 h-4 text-[var(--color-ink)]" />
-            </div>
-            <div>
-              <span className="font-semibold text-sm text-[var(--color-ink)]">NAZAR</span>
-              <span className="text-xs text-[var(--color-muted)] ml-2 font-mono">CODE 2026</span>
-            </div>
+            <img src="/nazar-favicon.png" alt="" className="w-8 h-8 object-contain" />
+            <span className="font-semibold text-lg tracking-tight text-[var(--color-ink)]">Nazar</span>
           </div>
 
           <button
@@ -187,10 +182,10 @@ export const FirstOpenExperience: React.FC<FirstOpenExperienceProps> = ({ onComp
               e.stopPropagation();
               onComplete();
             }}
-            className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-panel)] hover:bg-[var(--color-border-soft)] border border-[var(--color-border-soft)] text-xs text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-all backdrop-blur-md"
+            className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-panel)] hover:bg-[var(--color-border-soft)] border border-[var(--color-border-soft)] text-xs text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-all"
           >
             <span>Skip intro</span>
-            <span className="text-[10px] px-1 py-0.5 rounded bg-[var(--color-background)] border border-[var(--color-border)] font-mono text-[var(--color-muted)] group-hover:text-[var(--color-ink)]">
+            <span className="text-xs px-1 py-0.5 rounded bg-[var(--color-background)] border border-[var(--color-border)] font-mono text-[var(--color-muted)] group-hover:text-[var(--color-ink)]">
               ESC
             </span>
             <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -208,7 +203,7 @@ export const FirstOpenExperience: React.FC<FirstOpenExperienceProps> = ({ onComp
           >
             <div className="flex items-center gap-2">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-green)] animate-pulse" />
-              <p className="text-[10px] font-mono uppercase text-[var(--color-green)]">{stageText}</p>
+              <p className="text-xs font-mono text-[var(--color-green)]">{stageText}</p>
             </div>
             <h2 className="text-2xl font-normal text-[var(--color-ink)] ">
               Graph <span className="text-[var(--color-border)]">→</span> Market{' '}

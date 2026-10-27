@@ -1,39 +1,41 @@
 @import 'tailwindcss';
 
 /* ── Design Tokens ─────────────────────────────────────────────────────────── */
+/* Palette and type scale follow the clean fintech style of Groww's web app:
+   white surfaces, hairline grey borders, one green accent, no gradients. */
 @layer base {
   :root {
-    --font-sans: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-    --font-mono: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    /* Numbers use the same typeface with tabular figures (see .font-mono below) */
+    --font-mono: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 
     /* Primary Semantic Colors */
-    --color-green: #00b386;
-    --color-green-soft: #e7f8f1;
-    --color-red: #eb5b3c;
-    --color-red-soft: #fdebe6;
+    --color-green: #04b488;
+    --color-green-hover: #04ad83;
+    --color-green-soft: #e9faf3;
+    --color-red: #ed5533;
+    --color-red-soft: #fae9e5;
     --color-amber: #d9a400;
 
     /* Typography & Ink */
-    --color-ink: #1a1a2e;
-    --color-ink-soft: #41424e;
-    --color-muted: #74777c;
-    --color-faint: #9b9ea3;
+    --color-ink: #44475b;
+    --color-ink-soft: #696c7c;
+    --color-muted: #7c7e8c;
+    --color-faint: #a1a3ad;
 
     /* Surfaces & Borders */
-    --color-border: #e8e8ec;
-    --color-border-soft: #f1f1f4;
-    --color-panel: #fafafb;
+    --color-border: #e9e9eb;
+    --color-border-soft: #f0f0f2;
+    --color-panel: #f8f8f8;
     --color-background: #ffffff;
 
     /* Motion */
     --ease-snappy: cubic-bezier(0.22, 1, 0.36, 1);
-    --duration-fast: 180ms;
-    --duration-medium: 280ms;
+    --duration-fast: 150ms;
+    --duration-medium: 250ms;
 
-    /* Premium Shadows & Elevation */
-    --shadow-premium: 0 4px 24px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.01);
-    --shadow-premium-hover: 0 12px 32px rgba(0, 0, 0, 0.04), 0 2px 4px rgba(0, 0, 0, 0.02);
-    --inner-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+    /* Elevation: a single soft shadow, used only for floating layers (dialogs, menus) */
+    --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 
   html {
@@ -45,6 +47,8 @@
 
   body {
     font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
     background-color: var(--color-background);
     color: var(--color-ink);
     overflow-x: hidden;
@@ -53,7 +57,7 @@
   /* ── Focus states — accessibility ─────────────────────────────────────── */
   :focus-visible {
     outline: 2px solid var(--color-green);
-    outline-offset: 3px;
+    outline-offset: 2px;
     border-radius: 4px;
   }
 
@@ -78,8 +82,8 @@
 
 /* ── Scrollbar ─────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -92,7 +96,7 @@
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-muted);
+  background: var(--color-faint);
 }
 
 /* ── Animations ────────────────────────────────────────────────────────────── */
@@ -121,53 +125,28 @@
 
 /* ── Component Helpers ─────────────────────────────────────────────────────── */
 
-/* Premium Card Surfaces */
+/* Numbers: same typeface as body text, with aligned (tabular) figures */
+.font-mono,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Flat card surface: white with a hairline border, no shadow */
 .premium-card {
   background: var(--color-background);
   border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-premium);
-  transition:
-    transform var(--duration-fast) var(--ease-snappy),
-    box-shadow var(--duration-fast) var(--ease-snappy),
-    border-color var(--duration-fast) var(--ease-snappy);
+  transition: border-color var(--duration-fast) var(--ease-snappy);
 }
 
 .premium-card:hover {
-  transform: scale(1.01);
-  box-shadow: var(--shadow-premium-hover);
-  border-color: var(--color-border-soft);
+  border-color: #dddee1;
 }
 
-.inner-highlight {
-  box-shadow: var(--inner-highlight);
-}
-
-/* Glass panel (subtle) */
+/* Floating layer (dialogs, popovers): solid white, hairline border, one soft shadow */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: var(--shadow-premium);
-}
-
-/* Attention-level left border accent */
-.attention-high {
-  border-left: 2px solid var(--color-green);
-}
-
-.attention-medium {
-  border-left: 2px solid var(--color-amber);
-}
-
-.attention-low {
-  border-left: 2px solid var(--color-border);
-}
-
-/* Monospace table-number alignment */
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.015em;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-float);
 }
 
 /* Score bar fill transition */
@@ -178,7 +157,7 @@
 /* Prose narrative body text */
 .prose-market {
   font-size: 0.875rem;
-  line-height: 1.65;
+  line-height: 1.6;
   color: var(--color-ink-soft);
   font-weight: 400;
 }

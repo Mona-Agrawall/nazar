@@ -63,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
   ];
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-[var(--color-border)] bg-[var(--color-background)]/85 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.02)] transition-all">
+    <header className="sticky top-0 z-40 w-full border-b border-[var(--color-border)] bg-[var(--color-background)] transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
         {/* Left: Brand logo & live pulse */}
         <div className="flex items-center gap-8">
@@ -71,30 +71,23 @@ export const Header: React.FC<HeaderProps> = ({
             type="button"
             onClick={() => onTabChange('pulse')}
             aria-label="Nazar — go to overview"
-            className="flex items-center gap-3 cursor-pointer group text-left"
+            className="flex items-center gap-2.5 cursor-pointer text-left"
           >
-            <span className="relative flex items-center justify-center transition-colors">
-              <img src="/nazar-favicon.png" alt="Nazar Icon" className="w-8 h-8 object-contain" />
-              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-green)] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-green)]"></span>
-              </span>
-            </span>
-            <span className="text-lg sm:text-xl font-medium text-[var(--color-ink)] block">NAZAR</span>
+            <img src="/nazar-favicon.png" alt="" className="w-8 h-8 object-contain" />
+            <span className="text-[22px] font-semibold tracking-tight text-[var(--color-ink)]">Nazar</span>
           </button>
 
           {/* Editorial Navigation tabs */}
-          <nav className="hidden md:flex items-center gap-6 text-sm uppercase tracking-normal font-semibold text-[var(--color-ink-soft)]">
+          <nav className="hidden md:flex items-center gap-7 text-[15px] font-medium text-[var(--color-ink-soft)]">
             {tabs.map((tab) => {
               const active = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
-                  className={`pb-1 transition-colors ${
-                    active
-                      ? 'text-[var(--color-ink)] border-b border-[var(--color-ink)]'
-                      : 'hover:text-[var(--color-ink)]'
+                  aria-current={active ? 'page' : undefined}
+                  className={`transition-colors ${
+                    active ? 'text-[var(--color-green)]' : 'hover:text-[var(--color-ink)]'
                   }`}
                 >
                   {tab.label}
@@ -109,10 +102,13 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Quick Command search trigger */}
           <button
             onClick={onOpenSearch}
-            title="Search (⌘K)"
-            className="p-2 rounded-full bg-[var(--color-background)] hover:bg-[var(--color-panel)] border border-[var(--color-border)] shadow-sm hover:shadow-md inner-highlight hover:-translate-y-[0.5px] transition-all group shrink-0"
+            title="Search (Ctrl+K)"
+            aria-label="Search stocks"
+            className="flex items-center gap-3 h-10 w-10 lg:w-[300px] justify-center lg:justify-start lg:px-3.5 rounded-md bg-[var(--color-background)] border border-[var(--color-border)] hover:border-[#dddee1] text-[var(--color-faint)] transition-colors shrink-0"
           >
-            <Search className="w-4 h-4 text-[var(--color-ink-soft)] group-hover:text-[var(--color-ink)]" />
+            <Search className="w-4 h-4 text-[var(--color-muted)] shrink-0" />
+            <span className="hidden lg:inline text-sm flex-1 text-left">Search stocks…</span>
+            <kbd className="hidden lg:inline text-xs font-sans text-[var(--color-faint)]">Ctrl+K</kbd>
           </button>
 
           {/* Editorial Session Time Display & Simulator Trigger */}
@@ -122,14 +118,10 @@ export const Header: React.FC<HeaderProps> = ({
             title="Simulate time away to test Nazar calculation"
             className="cursor-pointer group text-right hidden lg:block shrink-0"
           >
-            <span className="block text-[10px] uppercase font-medium text-[var(--color-faint)] group-hover:text-[var(--color-muted)] transition-colors whitespace-nowrap">
-              Session Time
-            </span>
-            <span className="text-xs font-mono font-semibold text-[var(--color-ink)] flex items-center justify-end gap-1 whitespace-nowrap">
-              <span>{awayFormatted} away</span>
-              <span className="text-[9px] text-[var(--color-green)] underline underline-offset-2 decoration-[var(--color-border)] group-hover:decoration-[var(--color-green)]">
-                Simulate
-              </span>
+            <span className="block text-xs text-[var(--color-muted)] whitespace-nowrap">Away for</span>
+            <span className="text-sm font-mono font-medium text-[var(--color-ink)] flex items-center justify-end gap-1.5 whitespace-nowrap">
+              <span>{awayFormatted}</span>
+              <span className="text-xs font-medium text-[var(--color-green)] group-hover:underline">Simulate</span>
             </span>
           </button>
 
@@ -139,40 +131,40 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setShowFeedPopover(!showFeedPopover)}
               aria-expanded={showFeedPopover}
               aria-haspopup="dialog"
-              className="flex items-center gap-2 sm:gap-3 bg-[var(--color-background)] hover:bg-[var(--color-panel)] px-3 sm:px-4 py-1.5 rounded-full border border-[var(--color-border)] shadow-sm hover:shadow-md inner-highlight hover:-translate-y-[0.5px] transition-all"
+              className="flex items-center gap-2 bg-[var(--color-background)] hover:bg-[var(--color-panel)] h-10 px-3.5 rounded-md border border-[var(--color-border)] transition-colors"
             >
-              <div className="w-2 h-2 rounded-full bg-[var(--color-green)] shadow-[0_0_8px_var(--color-green-soft)] shrink-0" />
-              <span className="text-[9px] sm:text-[10px] uppercase text-[var(--color-ink-soft)] font-semibold font-mono whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-amber)] shrink-0" aria-hidden />
+              <span className="hidden sm:inline text-sm text-[var(--color-ink-soft)] whitespace-nowrap">
                 {feedStatus?.label ?? 'Market data'}
               </span>
               <ChevronDown className="w-3 h-3 text-[var(--color-faint)] shrink-0" />
             </button>
 
             {showFeedPopover && (
-              <div className="absolute right-0 mt-3 w-72 p-4 glass-panel rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.05)] z-50 text-xs space-y-2.5">
-                <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] pb-2">
-                  <span className="font-semibold text-[var(--color-ink)] ">Market Feed Status</span>
-                  <span className="px-2 py-0.5 rounded bg-[var(--color-green-soft)] text-[var(--color-green)] text-[10px] font-mono uppercase ">
+              <div className="absolute right-0 mt-2 w-80 p-4 glass-panel rounded-lg z-50 text-sm space-y-3">
+                <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+                  <span className="font-medium text-[var(--color-ink)]">Market data</span>
+                  <span className="px-2 py-0.5 rounded bg-[var(--color-panel)] text-[var(--color-muted)] text-xs font-medium">
                     {feedStatus?.mode || 'UNKNOWN'}
                   </span>
                 </div>
-                <p className="text-[var(--color-muted)] leading-relaxed text-[11px]">
+                <p className="text-[var(--color-muted)] leading-relaxed">
                   {feedStatus?.detail || 'Feed status unavailable.'}
                 </p>
-                <div className="flex items-center justify-between text-[10px] text-[var(--color-faint)] pt-1 font-mono">
-                  <span>Last Engine Tick</span>
+                <div className="flex items-center justify-between text-xs text-[var(--color-faint)] font-mono">
+                  <span>Loaded at</span>
                   <span>{feedStatus?.lastUpdated || 'Active'}</span>
                 </div>
-                <div className="pt-2 border-t border-[var(--color-border-soft)] flex gap-2">
+                <div className="pt-3 border-t border-[var(--color-border)] flex gap-2">
                   <button
                     onClick={() => {
                       onSyncNow();
                       setShowFeedPopover(false);
                     }}
                     disabled={isSyncing}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-[var(--color-panel)] hover:bg-[var(--color-border-soft)] text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] text-[11px] transition-colors"
+                    className="w-full flex items-center justify-center gap-1.5 h-9 px-3 rounded-md bg-[var(--color-green)] hover:bg-[var(--color-green-hover)] text-white text-sm font-medium transition-colors disabled:opacity-60"
                   >
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[var(--color-green)]" />
+                    <CheckCircle2 className="w-4 h-4" />
                     <span>{isSyncing ? 'Syncing...' : 'Mark Session as Read'}</span>
                   </button>
                 </div>
@@ -184,19 +176,20 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onReplayIntro}
             title="Replay cinematic first-open experience"
-            className="p-1.5 rounded-full bg-[var(--color-panel)] hover:bg-[var(--color-border-soft)] text-[var(--color-faint)] hover:text-[var(--color-ink)] transition-colors hidden md:block"
+            aria-label="Replay intro"
+            className="p-2 rounded-full hover:bg-[var(--color-panel)] text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors hidden md:block"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-4 h-4" />
           </button>
 
           {/* User Profile / Auth Actions */}
-          <div className="flex items-center gap-3 pl-4 ml-2 border-l border-[var(--color-border-soft)]">
+          <div className="flex items-center gap-2 pl-4 border-l border-[var(--color-border)]">
             <div
-              className="flex items-center justify-center w-9 h-9 rounded-full bg-[var(--color-panel)] border border-[var(--color-border-soft)] shadow-sm"
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-[var(--color-green-soft)] text-[var(--color-green)]"
               title={user?.email ?? 'Demo mode'}
               aria-label={user?.email ? `Signed in as ${user.email}` : 'Demo mode'}
             >
-              <UserIcon className="w-4 h-4 text-[var(--color-ink-soft)]" />
+              <UserIcon className="w-4 h-4" />
             </div>
             {/* Signed-in users sign out; "Skip for now" users can return to sign-in; forced demo mode has neither */}
             {(user || canExitDemo) && (
@@ -204,9 +197,9 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={handleSignOut}
                 title={user ? 'Sign Out' : 'Exit demo'}
                 aria-label={user ? 'Sign out' : 'Exit demo mode and return to sign-in'}
-                className="p-1.5 rounded-full hover:bg-[var(--color-red-soft)] text-[var(--color-faint)] hover:text-[var(--color-red)] transition-colors"
+                className="p-2 rounded-full hover:bg-[var(--color-red-soft)] text-[var(--color-muted)] hover:text-[var(--color-red)] transition-colors"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <LogOut className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -219,10 +212,11 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`px-3 py-1 text-[11px] uppercase font-medium ${
+            aria-current={activeTab === tab.id ? 'page' : undefined}
+            className={`px-3 py-1.5 text-sm font-medium border-b-2 ${
               activeTab === tab.id
-                ? 'text-[var(--color-ink)] border-b border-[var(--color-ink)]'
-                : 'text-[var(--color-muted)]'
+                ? 'text-[var(--color-green)] border-[var(--color-green)]'
+                : 'text-[var(--color-muted)] border-transparent'
             }`}
           >
             {tab.label}

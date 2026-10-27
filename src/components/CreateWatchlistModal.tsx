@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, FolderPlus, Check } from 'lucide-react';
 import { Stock } from '../types';
-import { currencySymbol } from '../lib/currency';
+import { currencySymbol, formatPrice } from '../lib/currency';
 import { useEscapeKey } from '../lib/useEscapeKey';
 import { useFocusTrap } from '../lib/useFocusTrap';
 
@@ -63,7 +63,7 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--color-ink)]/10 backdrop-blur-md"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
         onClick={handleClose}
         role="dialog"
         aria-modal="true"
@@ -74,20 +74,20 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 8 }}
           transition={{ duration: 0.2 }}
-          className="relative w-full max-w-md rounded-2xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-2xl p-6 text-[var(--color-ink)] overflow-hidden"
+          className="relative w-full max-w-md rounded-lg bg-[var(--color-background)] border border-[var(--color-border)] shadow-[var(--shadow-float)] p-6 text-[var(--color-ink)] overflow-hidden"
           ref={panelRef}
           tabIndex={-1}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-start justify-between pb-4 border-b border-[var(--color-border-soft)]">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-[var(--color-panel)] text-[var(--color-muted)] border border-[var(--color-border-soft)]">
+              <div className="p-2 rounded-md bg-[var(--color-panel)] text-[var(--color-muted)] border border-[var(--color-border-soft)]">
                 <FolderPlus className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-xl font-normal ">Create Ledger</h3>
+                <h3 className="text-lg font-medium">Create watchlist</h3>
                 <p className="text-xs text-[var(--color-faint)] font-normal">
-                  Segment assets by theme, mandate, or asset class
+                  Group stocks by theme, sector or strategy
                 </p>
               </div>
             </div>
@@ -105,31 +105,29 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
             {error && (
               <div
                 role="alert"
-                className="p-3 rounded-xl bg-[var(--color-red-soft)] text-xs text-[var(--color-red)] font-normal"
+                className="p-3 rounded-md bg-[var(--color-red-soft)] text-xs text-[var(--color-red)] font-normal"
               >
                 {error}
               </div>
             )}
             <div>
-              <label className="block text-[10px] font-medium text-[var(--color-faint)] mb-1.5 font-mono uppercase ">
-                Ledger Title
-              </label>
+              <label className="block text-sm font-medium text-[var(--color-ink)] mb-1.5 ">Name</label>
               <input
                 ref={nameInputRef}
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={MAX_NAME_LENGTH}
-                placeholder="e.g. Sovereign Bluechips, EV Supply Chain..."
-                className="w-full px-4 py-2.5 rounded-xl bg-[var(--color-panel)] border border-[var(--color-border)] text-sm text-[var(--color-ink)] placeholder-[var(--color-faint)] focus:outline-none focus:border-[var(--color-muted)] font-normal"
+                placeholder="e.g. Banking, EV stocks"
+                className="w-full h-10 px-3.5 rounded-md bg-[var(--color-background)] border border-[var(--color-border)] text-sm text-[var(--color-ink)] placeholder-[var(--color-faint)] focus:outline-none focus:border-[var(--color-green)] font-normal"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-medium text-[var(--color-faint)] mb-1.5 font-mono uppercase ">
-                Initial Assets ({selectedSymbols.length} selected)
+              <label className="block text-sm font-medium text-[var(--color-ink)] mb-1.5 ">
+                Stocks ({selectedSymbols.length} selected)
               </label>
-              <div className="max-h-48 overflow-y-auto p-1.5 rounded-xl bg-[var(--color-panel)] border border-[var(--color-border-soft)] space-y-1">
+              <div className="max-h-56 overflow-y-auto p-1.5 rounded-md bg-[var(--color-background)] border border-[var(--color-border-soft)] space-y-1">
                 {availableStocks.map((stock) => {
                   const isChecked = selectedSymbols.includes(stock.symbol);
                   return (
@@ -139,20 +137,20 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
                       onClick={() => toggleSymbol(stock.symbol)}
                       className={`w-full flex items-center justify-between p-2.5 rounded-lg text-xs transition-colors ${
                         isChecked
-                          ? 'bg-[var(--color-background)] text-[var(--color-ink)] border border-[var(--color-border)] shadow-sm'
+                          ? 'bg-[var(--color-background)] text-[var(--color-ink)] border border-[var(--color-border)]'
                           : 'text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-border-soft)]'
                       }`}
                     >
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-medium">{stock.symbol}</span>
-                        <span className="text-[11px] text-[var(--color-faint)] truncate max-w-[150px] font-normal">
+                        <span className="text-xs text-[var(--color-faint)] truncate max-w-[150px] font-normal">
                           {stock.name}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[var(--color-faint)] text-[10px]">
+                        <span className="font-mono text-[var(--color-faint)] text-xs">
                           {currencySymbol(stock.exchange)}
-                          {stock.currentPrice.toFixed(0)}
+                          {formatPrice(stock.currentPrice, 0)}
                         </span>
                         {isChecked && <Check className="w-3.5 h-3.5 text-[var(--color-green)]" />}
                       </div>
@@ -166,16 +164,16 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-4 py-2 rounded-full bg-[var(--color-panel)] hover:bg-[var(--color-border-soft)] text-xs font-medium text-[var(--color-muted)] transition-colors"
+                className="h-10 px-4 rounded-md border border-[var(--color-border)] hover:bg-[var(--color-panel)] text-sm font-medium text-[var(--color-ink)] transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submitting || !name.trim()}
-                className="px-5 py-2 rounded-full bg-[var(--color-ink)] hover:bg-[var(--color-ink-soft)] text-[var(--color-background)] font-semibold text-xs transition-colors disabled:opacity-40"
+                className="h-10 px-5 rounded-md bg-[var(--color-green)] hover:bg-[var(--color-green-hover)] text-white font-medium text-sm transition-colors disabled:opacity-40"
               >
-                {submitting ? 'Creating...' : 'Initialize Watchlist'}
+                {submitting ? 'Creating…' : 'Create'}
               </button>
             </div>
           </form>
