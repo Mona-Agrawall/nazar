@@ -211,7 +211,7 @@ graph TD
 | Market data | Built-in deterministic dataset | Zero API dependency for demos; realistic, reproducible data |
 | Icons | Lucide React | Consistent, lightweight |
 | Dev runner | tsx | Runs the TypeScript server directly in dev without a build step |
-| Production build | Vite + esbuild | Vite bundles the SPA; esbuild bundles the server into `dist/server.cjs` |
+| Production build | Vite + esbuild | Vite bundles the SPA; esbuild bundles the server into `dist-server/server.cjs` (kept out of the public `dist/` folder) |
 | Formatting | Prettier | One consistent code style (`npm run format`) |
 
 ---
@@ -647,7 +647,7 @@ Use **Skip for now** to enter demo mode without an account. Use **Simulate** (he
 | Command | What it does |
 |---------|--------------|
 | `npm run dev` | Development server with hot reload on port 3000 |
-| `npm run build` | Builds the frontend into `dist/` and the server into `dist/server.cjs` |
+| `npm run build` | Builds the frontend into `dist/` and the server into `dist-server/server.cjs` |
 | `npm start` | Runs the production build |
 | `npm run typecheck` | TypeScript check (also flags unused code) |
 | `npm run format` | Formats the code with Prettier |
