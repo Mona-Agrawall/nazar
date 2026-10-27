@@ -101,7 +101,6 @@ export const supabaseRepository = {
     const { data, error } = await db.rpc('create_watchlist_with_items', {
       p_name: name,
       p_symbols: symbols,
-      p_is_default: false,
     });
 
     if (error) throw error;
