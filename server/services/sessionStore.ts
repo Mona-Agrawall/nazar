@@ -25,24 +25,57 @@ const TIME_TRAVEL_PRESETS = new Map<string, number>([
   ['3d', 72 * 3600],
 ]);
 
-const sessions = new Map<string, UserSession>();
+/** Sessions idle for longer than this are discarded. */
+const SESSION_TTL_MS = 6 * 3600 * 1000;
+/** Hard cap; the least recently used session is evicted beyond it. */
+const MAX_SESSIONS = 5000;
+const MAX_SESSION_ID_LENGTH = 64;
+const SWEEP_INTERVAL_MS = 60 * 1000;
+
+// Map iteration order doubles as LRU order: an accessed session is re-inserted at the end.
+const sessions = new Map<string, { session: UserSession; lastAccessedAt: number }>();
+let lastSweepAt = 0;
+
+function sweepExpiredSessions(now: number) {
+  if (now - lastSweepAt < SWEEP_INTERVAL_MS) return;
+  lastSweepAt = now;
+  for (const [key, entry] of sessions) {
+    if (now - entry.lastAccessedAt > SESSION_TTL_MS) sessions.delete(key);
+  }
+}
+
+/** Number of live sessions (used by tests). */
+export function getSessionCount(): number {
+  return sessions.size;
+}
 
 /** Returns the session for a browser tab (X-Session-Id header), creating it on first use. */
 export function getOrCreateSession(sessionId?: string | null): UserSession {
-  const key = sessionId?.trim() || 'default';
-  let session = sessions.get(key);
-  if (!session) {
-    session = {
-      lastVisitTimestamp: 0,
-      simulatedAwaySeconds: 0,
-      dismissedEventIds: new Set(),
-      acknowledgedEventIds: new Set(),
-      stockSnapshots: {},
-      watchlists: createDemoWatchlists(),
-      activeWatchlistId: 'wl_default',
-    };
-    applyDemoScenario(session);
-    sessions.set(key, session);
+  const key = sessionId?.trim().slice(0, MAX_SESSION_ID_LENGTH) || 'default';
+  const now = Date.now();
+  sweepExpiredSessions(now);
+
+  const existing = sessions.get(key);
+  if (existing && now - existing.lastAccessedAt <= SESSION_TTL_MS) {
+    sessions.delete(key);
+    sessions.set(key, { session: existing.session, lastAccessedAt: now });
+    return existing.session;
+  }
+
+  const session: UserSession = {
+    lastVisitTimestamp: 0,
+    simulatedAwaySeconds: 0,
+    dismissedEventIds: new Set(),
+    acknowledgedEventIds: new Set(),
+    stockSnapshots: {},
+    watchlists: createDemoWatchlists(),
+    activeWatchlistId: 'wl_default',
+  };
+  applyDemoScenario(session);
+  sessions.delete(key);
+  sessions.set(key, { session, lastAccessedAt: now });
+  while (sessions.size > MAX_SESSIONS) {
+    sessions.delete(sessions.keys().next().value as string);
   }
   return session;
 }
