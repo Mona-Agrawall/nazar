@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppTab, Stock, MarketIndex, MarketEvent, Watchlist, MarketPulse, FeedStatus } from './types';
 import { api } from './services/api';
+import { createSerialQueue } from './lib/serialQueue';
 import { AtmosphereField } from './components/AtmosphereField';
 import { FirstOpenExperience } from './components/FirstOpenExperience';
 import { Header } from './components/Header';
@@ -47,6 +48,16 @@ function Dashboard() {
   const [filterOnlyImportant, setFilterOnlyImportant] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // Watchlist edits read the latest symbols from this ref (not a render closure) and are queued,
+  // so rapid edits neither overwrite each other nor reach the server out of order.
+  const watchlistsRef = useRef<Watchlist[]>([]);
+  const enqueueEdit = useRef(createSerialQueue()).current;
+
+  const applyWatchlists = useCallback((next: Watchlist[]) => {
+    watchlistsRef.current = next;
+    setWatchlists(next);
+  }, []);
+
   // ── Load market data ──────────────────────────────────────────────────────
   const loadMarketData = useCallback(async (watchlistId?: string) => {
     try {
@@ -56,7 +67,7 @@ function Dashboard() {
         api.getFeedStatus(),
       ]);
 
-      setWatchlists(wlData.watchlists);
+      applyWatchlists(wlData.watchlists);
       setIndices(idxData);
       setFeedStatus(statusData);
 
@@ -77,7 +88,7 @@ function Dashboard() {
     } catch (err) {
       console.error('[Nazar] Failed to load market data', err);
     }
-  }, []);
+  }, [applyWatchlists]);
 
   // ── Initial load (seeds the demo scenario on a tab's first visit) ────────
   useEffect(() => {
@@ -128,29 +139,59 @@ function Dashboard() {
     setEvents(eventData);
   };
 
+  const setSymbols = (id: string, update: (symbols: string[]) => string[]) => {
+    applyWatchlists(watchlistsRef.current.map((w) => (w.id === id ? { ...w, symbols: update(w.symbols) } : w)));
+  };
+
+  // Sends the watchlist's latest symbols once every earlier edit has finished.
+  const saveSymbols = (id: string) => {
+    return enqueueEdit(async () => {
+      const wl = watchlistsRef.current.find((w) => w.id === id);
+      if (wl) await api.updateWatchlist(id, { symbols: wl.symbols });
+    });
+  };
+
   const handleRemoveStock = async (symbol: string) => {
-    const wl = watchlists.find((w) => w.id === activeWatchlistId);
-    if (!wl) return;
+    const id = activeWatchlistId;
+    const wl = watchlistsRef.current.find((w) => w.id === id);
+    if (!wl || !wl.symbols.includes(symbol)) return;
+    const removedStock = stocks.find((s) => s.symbol === symbol);
     // Optimistic update
+    setSymbols(id, (symbols) => symbols.filter((s) => s !== symbol));
     setStocks((prev) => prev.filter((s) => s.symbol !== symbol));
-    await api.updateWatchlist(wl.id, { symbols: wl.symbols.filter((s) => s !== symbol) });
+    try {
+      await saveSymbols(id);
+    } catch (err) {
+      console.error('[Nazar] Failed to remove stock', err);
+      // Roll back, then resync with the server's actual state
+      setSymbols(id, (symbols) => (symbols.includes(symbol) ? symbols : [...symbols, symbol]));
+      if (removedStock) setStocks((prev) => (prev.some((s) => s.symbol === symbol) ? prev : [...prev, removedStock]));
+      await loadMarketData(id);
+    }
   };
 
   const handleAddStock = async (symbol: string) => {
-    const wl = watchlists.find((w) => w.id === activeWatchlistId);
+    const id = activeWatchlistId;
+    const wl = watchlistsRef.current.find((w) => w.id === id);
     if (!wl || wl.symbols.includes(symbol)) return;
-    await api.updateWatchlist(wl.id, { symbols: [...wl.symbols, symbol] });
-    await loadMarketData(activeWatchlistId);
+    setSymbols(id, (symbols) => [...symbols, symbol]);
+    try {
+      await saveSymbols(id);
+    } catch (err) {
+      console.error('[Nazar] Failed to add stock', err);
+      setSymbols(id, (symbols) => symbols.filter((s) => s !== symbol));
+    }
+    await loadMarketData(id);
   };
 
   const handleToggleWatchlistStock = (symbol: string) => {
-    const wl = watchlists.find((w) => w.id === activeWatchlistId);
+    const wl = watchlistsRef.current.find((w) => w.id === activeWatchlistId);
     wl?.symbols.includes(symbol) ? handleRemoveStock(symbol) : handleAddStock(symbol);
   };
 
   const handleCreateWatchlist = async (name: string, symbols: string[]) => {
     const newWl = await api.createWatchlist(name, symbols);
-    setWatchlists((prev) => [...prev, newWl]);
+    applyWatchlists([...watchlistsRef.current, newWl]);
     await handleSelectWatchlist(newWl.id);
   };
 
