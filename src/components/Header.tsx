@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Search, RotateCcw, CheckCircle2, ChevronDown, LogOut, User as UserIcon } from 'lucide-react';
 import { AppTab, FeedStatus } from '../types';
 import { auth } from '../lib/auth';
 import { useAuth } from '../contexts/AuthContext';
+import { useEscapeKey } from '../lib/useEscapeKey';
 
 interface HeaderProps {
   activeTab: AppTab;
@@ -28,7 +29,19 @@ export const Header: React.FC<HeaderProps> = ({
   isSyncing,
 }) => {
   const [showFeedPopover, setShowFeedPopover] = useState(false);
+  const feedPopoverRef = useRef<HTMLDivElement>(null);
   const { user, canExitDemo, setDemoMode } = useAuth();
+
+  // The feed popover closes on Escape or a click outside it
+  useEscapeKey(() => setShowFeedPopover(false), showFeedPopover);
+  useEffect(() => {
+    if (!showFeedPopover) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!feedPopoverRef.current?.contains(e.target as Node)) setShowFeedPopover(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [showFeedPopover]);
 
   const handleSignOut = async () => {
     if (canExitDemo) {
@@ -121,9 +134,11 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {/* Feed state indicator with glowing dot & tooltip popover */}
-          <div className="relative shrink-0">
+          <div ref={feedPopoverRef} className="relative shrink-0">
             <button
               onClick={() => setShowFeedPopover(!showFeedPopover)}
+              aria-expanded={showFeedPopover}
+              aria-haspopup="dialog"
               className="flex items-center gap-2 sm:gap-3 bg-[var(--color-background)] hover:bg-[var(--color-panel)] px-3 sm:px-4 py-1.5 rounded-full border border-[var(--color-border)] shadow-sm hover:shadow-md inner-highlight hover:-translate-y-[0.5px] transition-all"
             >
               <div className="w-2 h-2 rounded-full bg-[var(--color-green)] shadow-[0_0_8px_var(--color-green-soft)] shrink-0" />
