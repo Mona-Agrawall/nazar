@@ -120,9 +120,17 @@ function Dashboard() {
   }, [loadMarketData]);
 
   // ── Polling refresh ───────────────────────────────────────────────────────
+  // Skipped while the tab is hidden; refreshes as soon as it becomes visible again.
   useEffect(() => {
-    const interval = setInterval(() => loadMarketData(activeWatchlistId), REFRESH_INTERVAL_MS);
-    return () => clearInterval(interval);
+    const refresh = () => {
+      if (document.visibilityState === 'visible') loadMarketData(activeWatchlistId);
+    };
+    const interval = setInterval(refresh, REFRESH_INTERVAL_MS);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, [loadMarketData, activeWatchlistId]);
 
   // ── Cmd/Ctrl+K toggles search (the only handler for this shortcut) ───────
