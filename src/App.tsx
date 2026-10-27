@@ -109,12 +109,12 @@ function Dashboard() {
     return () => clearInterval(interval);
   }, [loadMarketData, activeWatchlistId]);
 
-  // ── Cmd/Ctrl+K opens search ───────────────────────────────────────────────
+  // ── Cmd/Ctrl+K toggles search (the only handler for this shortcut) ───────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setIsSearchOpen(true);
+        setIsSearchOpen((open) => !open);
       }
     };
     window.addEventListener('keydown', onKey);

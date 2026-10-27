@@ -60,11 +60,7 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // ⌘K or Ctrl+K toggle
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        if (isOpen) onClose();
-      }
+      // ⌘K / Ctrl+K is handled by App, which toggles this dialog.
       if (!isOpen) return;
 
       if (e.key === 'Escape') {
