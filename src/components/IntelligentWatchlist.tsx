@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Plus, Trash2, FolderPlus, ArrowUpDown, Search, ChevronRight } from 'lucide-react';
 import { Stock, Watchlist } from '../types';
 import { AnimatedPrice } from './AnimatedPrice';
+import { currencySymbol } from '../lib/currency';
 
 interface IntelligentWatchlistProps {
   stocks: Stock[];
@@ -187,7 +188,8 @@ export const IntelligentWatchlist: React.FC<IntelligentWatchlistProps> = ({
                     <Plus className="w-3 h-3 text-[var(--color-green)]" />
                     <span>{s.symbol}</span>
                     <span className="text-[var(--color-faint)] font-mono text-[10px]">
-                      ₹{s.currentPrice.toFixed(0)}
+                      {currencySymbol(s.exchange)}
+                      {s.currentPrice.toFixed(0)}
                     </span>
                   </button>
                 ))}
@@ -284,7 +286,8 @@ export const IntelligentWatchlist: React.FC<IntelligentWatchlistProps> = ({
                           {stock.userDelta.percentDiff.toFixed(2)}%
                         </span>
                         <span className="text-[11px] font-mono text-[var(--color-muted)]">
-                          (₹{stock.userDelta.previousPrice.toFixed(1)})
+                          ({currencySymbol(stock.exchange)}
+                          {stock.userDelta.previousPrice.toFixed(1)})
                         </span>
                       </div>
                       <p className="text-xs text-[var(--color-ink-soft)] line-clamp-1 font-normal">
@@ -295,7 +298,7 @@ export const IntelligentWatchlist: React.FC<IntelligentWatchlistProps> = ({
                     {/* Price & Sparkline */}
                     <div className="md:col-span-2 flex md:flex-col items-center md:items-end justify-between md:justify-center my-1 md:my-0">
                       <div className="font-mono text-sm font-medium text-[var(--color-ink)]">
-                        <AnimatedPrice value={stock.currentPrice} />
+                        <AnimatedPrice value={stock.currentPrice} currency={currencySymbol(stock.exchange)} />
                       </div>
                       <div
                         className={`text-[11px] font-mono flex items-center gap-0.5 ${
@@ -338,7 +341,9 @@ export const IntelligentWatchlist: React.FC<IntelligentWatchlistProps> = ({
                           onRemoveStock(stock.symbol);
                         }}
                         title="Remove from watchlist"
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[var(--color-faint)] hover:text-[var(--color-red)] hover:bg-[var(--color-red-soft)] transition-all"
+                        aria-label={`Remove ${stock.symbol} from watchlist`}
+                        // Always visible on touch screens; on hover devices shown on row hover or keyboard focus
+                        className="opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100 p-1.5 rounded-lg text-[var(--color-faint)] hover:text-[var(--color-red)] hover:bg-[var(--color-red-soft)] transition-all"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

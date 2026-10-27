@@ -90,7 +90,7 @@ export const MARKET_INDICES: MarketIndex[] = [
 ];
 
 /** A timeline event, positioned by seconds elapsed since the user left. */
-export type EventTemplate = Omit<MarketEvent, 'timestamp' | 'dismissed' | 'acknowledged'> & {
+export type EventTemplate = Omit<MarketEvent, 'timestamp' | 'timeFormatted' | 'dismissed' | 'acknowledged'> & {
   offsetSeconds: number;
 };
 
@@ -98,7 +98,6 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
   {
     id: 'evt_rel_1',
     offsetSeconds: 2800,
-    timeFormatted: '09:42 AM',
     stockSymbol: 'RELIANCE',
     stockName: 'Reliance Industries',
     title: 'Breakout Above +3.0%',
@@ -112,7 +111,6 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
   {
     id: 'evt_tcs_1',
     offsetSeconds: 4800,
-    timeFormatted: '10:18 AM',
     stockSymbol: 'TCS',
     stockName: 'Tata Consultancy Services',
     title: 'Crossed 30-day High Resistance',
@@ -126,12 +124,11 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
   {
     id: 'evt_hdfc_1',
     offsetSeconds: 7600,
-    timeFormatted: '11:06 AM',
     stockSymbol: 'HDFCBANK',
     stockName: 'HDFC Bank',
     title: 'Intraday Reversal & Volume Spike',
     change: '-2.7%',
-    changeType: 'price_down',
+    changeType: 'volume_surge',
     importance: 'critical',
     explanation:
       'Gap-up to ₹1,695 was forcefully rejected; aggressive institutional selling dumped 14.5M shares down to ₹1,642 support.',
@@ -140,7 +137,6 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
   {
     id: 'evt_infy_1',
     offsetSeconds: 13500,
-    timeFormatted: '12:43 PM',
     stockSymbol: 'INFY',
     stockName: 'Infosys Ltd',
     title: 'Volatility Contraction to Normal Range',
@@ -154,7 +150,6 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
   {
     id: 'evt_tata_1',
     offsetSeconds: 18200,
-    timeFormatted: '02:08 PM',
     stockSymbol: 'TATAMOTORS',
     stockName: 'Tata Motors',
     title: 'Automotive EV Delivery Surge',
@@ -168,7 +163,6 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
   {
     id: 'evt_bharti_1',
     offsetSeconds: 22400,
-    timeFormatted: '03:15 PM',
     stockSymbol: 'BHARTIARTL',
     stockName: 'Bharti Airtel',
     title: 'ARPU Guidance Upgrade',
@@ -180,24 +174,3 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
     miniChart: [1595, 1602, 1610, 1618, 1622, 1623],
   },
 ];
-
-/** Pre-written explanations served by /api/ai/explain for the demo stocks. */
-export const EXPLANATIONS: Record<string, string> = {
-  RELIANCE:
-    'RELIANCE deserves attention because it gained 3.8% while trading at roughly 2.4× its normal volume and is approaching its recent 30-day high — a combination that historically signals strong institutional interest.',
-  TCS: 'TCS cleared its 30-day resistance at ₹4,110 on sustained buying pressure, making this a technically significant breakout worth watching.',
-  HDFCBANK:
-    'HDFCBANK opened higher but reversed sharply, losing 2.7% on elevated institutional selling — the gap-up rejection pattern warrants close monitoring.',
-  INFY: 'Infosys is holding steady near its moving average with no exceptional signals. Normal market session.',
-  ICICIBANK:
-    'ICICI Bank is trading within its recent range with slightly elevated volume, no exceptional signals detected.',
-  SBIN: 'SBI is in a mild consolidation phase with normal volume activity.',
-  BHARTIARTL:
-    'Bharti Airtel gained 1.7% after a brokerage upgrade, approaching the upper end of its recent trading range.',
-  TATAMOTORS:
-    'Tata Motors rose 2.6% on strong electric vehicle delivery numbers, pushing past the ₹980 psychological level.',
-  ITC: 'ITC is trading quietly near flat, with no noteworthy activity since your last check.',
-  LT: 'Larsen & Toubro showed moderate upside with infrastructure sentiment supporting the sector.',
-  TITAN: 'Titan is in a mild pullback from recent highs with no significant catalyst.',
-  BAJFINANCE: 'Bajaj Finance is up moderately, reflecting continued credit growth momentum in the NBFC sector.',
-};

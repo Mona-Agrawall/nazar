@@ -1,12 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import { motion, useInView } from 'motion/react';
 import { ArrowUpRight, ArrowDownRight, Clock, CheckCircle, ChevronRight, AlertCircle, HelpCircle } from 'lucide-react';
-import { MarketPulse, Stock } from '../types';
+import { MarketEvent, MarketPulse, Stock } from '../types';
 import { Sparkline } from './Sparkline';
+import { eventIdsToAcknowledge, eventsForStock, isStockAcknowledged } from '../lib/pulseAck';
+import { currencySymbol } from '../lib/currency';
 
 interface MarketPulseHeroProps {
   pulse: MarketPulse | null;
   stocks: Stock[];
+  events: MarketEvent[];
   onSelectStock: (symbol: string) => void;
   onAcknowledgeEvent: (eventId: string) => void;
   onOpenTimeTravel: () => void;
@@ -45,7 +48,8 @@ interface PulseItemProps {
   onSelect: () => void;
   onWhy: () => void;
   isAcknowledged: boolean;
-  onAck: (e: React.MouseEvent) => void;
+  /** Undefined when the stock has no timeline events to acknowledge. */
+  onAck?: (e: React.MouseEvent) => void;
   delay?: number;
 }
 
@@ -112,7 +116,8 @@ function PulseItem({ stock, rank, onSelect, onWhy, isAcknowledged, onAck, delay 
             {stock.userDelta.percentDiff.toFixed(2)}%
           </div>
           <div className="text-[10px] text-[var(--color-faint)] font-mono mt-0.5">
-            ₹{stock.currentPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            {currencySymbol(stock.exchange)}
+            {stock.currentPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
           </div>
         </div>
       </div>
@@ -155,14 +160,16 @@ function PulseItem({ stock, rank, onSelect, onWhy, isAcknowledged, onAck, delay 
           </button>
 
           {/* Acknowledge */}
-          <button
-            onClick={onAck}
-            className={`p-1.5 rounded-full transition-colors ${isAcknowledged ? 'text-[var(--color-green)] bg-[var(--color-green-soft)]' : 'text-[var(--color-faint)] hover:text-[var(--color-ink)] hover:bg-[var(--color-panel)]'}`}
-            aria-label={isAcknowledged ? 'Acknowledged' : 'Acknowledge this change'}
-            title={isAcknowledged ? 'Acknowledged' : 'Mark as seen'}
-          >
-            <CheckCircle className="w-3.5 h-3.5" />
-          </button>
+          {onAck && (
+            <button
+              onClick={onAck}
+              className={`p-1.5 rounded-full transition-colors ${isAcknowledged ? 'text-[var(--color-green)] bg-[var(--color-green-soft)]' : 'text-[var(--color-faint)] hover:text-[var(--color-ink)] hover:bg-[var(--color-panel)]'}`}
+              aria-label={isAcknowledged ? 'Acknowledged' : 'Acknowledge this change'}
+              title={isAcknowledged ? 'Acknowledged' : 'Mark as seen'}
+            >
+              <CheckCircle className="w-3.5 h-3.5" />
+            </button>
+          )}
 
           {/* View detail */}
           <ChevronRight
@@ -181,7 +188,8 @@ interface FlagshipCardProps {
   onSelect: () => void;
   onWhy: () => void;
   isAcknowledged: boolean;
-  onAck: (e: React.MouseEvent) => void;
+  /** Undefined when the stock has no timeline events to acknowledge. */
+  onAck?: (e: React.MouseEvent) => void;
 }
 
 function FlagshipCard({ stock, onSelect, onWhy, isAcknowledged, onAck }: FlagshipCardProps) {
@@ -241,7 +249,8 @@ function FlagshipCard({ stock, onSelect, onWhy, isAcknowledged, onAck }: Flagshi
             <div>
               <div className="text-[9px] uppercase tracking-normal text-[var(--color-faint)] mb-0.5">Last seen</div>
               <div className="font-mono text-[var(--color-muted)] text-sm tabular-nums">
-                ₹{stock.userDelta.previousPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                {currencySymbol(stock.exchange)}
+                {stock.userDelta.previousPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
             </div>
             <div className="text-[var(--color-border)] font-mono" aria-hidden>
@@ -250,7 +259,8 @@ function FlagshipCard({ stock, onSelect, onWhy, isAcknowledged, onAck }: Flagshi
             <div>
               <div className="text-[9px] uppercase tracking-normal text-[var(--color-faint)] mb-0.5">Now</div>
               <div className="font-mono text-[var(--color-ink)] font-medium text-sm tabular-nums">
-                ₹{stock.currentPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                {currencySymbol(stock.exchange)}
+                {stock.currentPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
             </div>
             <div>
@@ -309,13 +319,15 @@ function FlagshipCard({ stock, onSelect, onWhy, isAcknowledged, onAck }: Flagshi
               Why?
             </button>
 
-            <button
-              onClick={onAck}
-              className={`p-1.5 rounded-full transition-colors ${isAcknowledged ? 'text-[var(--color-green)] bg-[var(--color-green-soft)]' : 'text-[var(--color-faint)] hover:text-[var(--color-ink)] hover:bg-[var(--color-panel)]'}`}
-              aria-label={isAcknowledged ? 'Acknowledged' : 'Acknowledge this change'}
-            >
-              <CheckCircle className="w-4 h-4" />
-            </button>
+            {onAck && (
+              <button
+                onClick={onAck}
+                className={`p-1.5 rounded-full transition-colors ${isAcknowledged ? 'text-[var(--color-green)] bg-[var(--color-green-soft)]' : 'text-[var(--color-faint)] hover:text-[var(--color-ink)] hover:bg-[var(--color-panel)]'}`}
+                aria-label={isAcknowledged ? 'Acknowledged' : 'Acknowledge this change'}
+              >
+                <CheckCircle className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -327,6 +339,7 @@ function FlagshipCard({ stock, onSelect, onWhy, isAcknowledged, onAck }: Flagshi
 export const MarketPulseHero: React.FC<MarketPulseHeroProps> = ({
   pulse,
   stocks,
+  events,
   onSelectStock,
   onAcknowledgeEvent,
   onOpenTimeTravel,
@@ -334,8 +347,6 @@ export const MarketPulseHero: React.FC<MarketPulseHeroProps> = ({
   onToggleFilterImportant,
   onOpenWhyModal,
 }) => {
-  const [acknowledgedIds, setAcknowledgedIds] = useState<Set<string>>(new Set());
-
   if (!pulse) return <PulseSkeleton />;
 
   const keyStocks = [...stocks].sort((a, b) => b.attentionScore - a.attentionScore);
@@ -352,15 +363,19 @@ export const MarketPulseHero: React.FC<MarketPulseHeroProps> = ({
       .filter((s) => s.attentionScore >= 70)
       .slice(0, 2)
       .map((s) => s.symbol)
-      .join(', ') || 'RELIANCE, TCS';
+      .join(', ') || 'None';
 
-  const volatilitySymbol = stocks.find((s) => s.changePercent24h < -1.5 || s.volumeRatio >= 2)?.symbol || 'HDFCBANK';
+  const volatilitySymbol = stocks.find((s) => s.changePercent24h < -1.5 || s.volumeRatio >= 2)?.symbol || 'None';
 
-  function handleAck(id: string, e: React.MouseEvent) {
-    e.stopPropagation();
-    setAcknowledgedIds((prev) => new Set([...prev, id]));
-    onAcknowledgeEvent(id);
-  }
+  // Cards represent stocks; acknowledging a card acknowledges that stock's timeline events.
+  const isAcknowledged = (symbol: string) => isStockAcknowledged(events, symbol);
+  const ackHandler = (symbol: string) => {
+    if (eventsForStock(events, symbol).length === 0) return undefined;
+    return (e: React.MouseEvent) => {
+      e.stopPropagation();
+      eventIdsToAcknowledge(events, symbol).forEach((id) => onAcknowledgeEvent(id));
+    };
+  };
 
   return (
     <section className="relative w-full pt-8 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -390,7 +405,11 @@ export const MarketPulseHero: React.FC<MarketPulseHeroProps> = ({
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold leading-tight text-[var(--color-ink)] mb-6">
           {getGreeting()}
           <br />
-          <span className="text-[var(--color-muted)]">{pulse.meaningfulChangesCount} things changed meaningfully.</span>
+          <span className="text-[var(--color-muted)]">
+            {pulse.meaningfulChangesCount === 0
+              ? 'Nothing changed meaningfully.'
+              : `${pulse.meaningfulChangesCount} ${pulse.meaningfulChangesCount === 1 ? 'thing' : 'things'} changed meaningfully.`}
+          </span>
         </h1>
 
         {/* Editorial stat strip */}
@@ -414,7 +433,11 @@ export const MarketPulseHero: React.FC<MarketPulseHeroProps> = ({
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-[10px] uppercase text-[var(--color-faint)]">Volatility</span>
-            <span className="text-xl sm:text-2xl font-semibold text-[var(--color-red)] ">{volatilitySymbol}</span>
+            <span
+              className={`text-xl sm:text-2xl font-semibold ${volatilitySymbol === 'None' ? 'text-[var(--color-muted)]' : 'text-[var(--color-red)]'}`}
+            >
+              {volatilitySymbol}
+            </span>
           </div>
         </div>
       </header>
@@ -456,8 +479,8 @@ export const MarketPulseHero: React.FC<MarketPulseHeroProps> = ({
           stock={flagshipStock}
           onSelect={() => onSelectStock(flagshipStock.symbol)}
           onWhy={() => onOpenWhyModal(flagshipStock)}
-          isAcknowledged={acknowledgedIds.has(flagshipStock.symbol)}
-          onAck={(e) => handleAck(flagshipStock.symbol, e)}
+          isAcknowledged={isAcknowledged(flagshipStock.symbol)}
+          onAck={ackHandler(flagshipStock.symbol)}
         />
       )}
 
@@ -471,8 +494,8 @@ export const MarketPulseHero: React.FC<MarketPulseHeroProps> = ({
                 rank={idx + 2}
                 onSelect={() => onSelectStock(stock.symbol)}
                 onWhy={() => onOpenWhyModal(stock)}
-                isAcknowledged={acknowledgedIds.has(stock.symbol)}
-                onAck={(e) => handleAck(stock.symbol, e)}
+                isAcknowledged={isAcknowledged(stock.symbol)}
+                onAck={ackHandler(stock.symbol)}
                 delay={0.08 * (idx + 1)}
               />
             </div>

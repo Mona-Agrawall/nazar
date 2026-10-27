@@ -3,6 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Search, Plus, Check, X } from 'lucide-react';
 import { Stock } from '../types';
 import { api } from '../services/api';
+import { currencySymbol } from '../lib/currency';
+import { useEscapeKey } from '../lib/useEscapeKey';
+import { useFocusTrap } from '../lib/useFocusTrap';
+
+const SEARCH_DEBOUNCE_MS = 200;
 
 interface CommandSearchProps {
   isOpen: boolean;
@@ -23,29 +28,49 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
   const [results, setResults] = useState<Stock[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const latestRequestRef = useRef(0);
+
+  useEscapeKey(onClose, isOpen);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, isOpen);
 
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 50);
-      api.searchStocks('').then(setResults);
     } else {
       setQuery('');
       setSelectedIndex(0);
     }
   }, [isOpen]);
 
+  // Debounced search: only the most recent request may update the results.
+  useEffect(() => {
+    if (!isOpen) return;
+    const requestId = ++latestRequestRef.current;
+    const timer = setTimeout(
+      () => {
+        api.searchStocks(query).then(
+          (res) => {
+            if (requestId === latestRequestRef.current) setResults(res);
+          },
+          (err) => {
+            if (requestId !== latestRequestRef.current) return;
+            console.error('[Nazar] Search failed', err);
+            setResults([]);
+          },
+        );
+      },
+      query ? SEARCH_DEBOUNCE_MS : 0,
+    );
+    return () => clearTimeout(timer);
+  }, [query, isOpen]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // ⌘K or Ctrl+K toggle
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        if (isOpen) onClose();
-      }
+      // ⌘K / Ctrl+K is handled by App, which toggles this dialog.
       if (!isOpen) return;
 
-      if (e.key === 'Escape') {
-        onClose();
-      } else if (e.key === 'ArrowDown') {
+      if (e.key === 'ArrowDown') {
         e.preventDefault();
         setSelectedIndex((prev) => (prev + 1) % Math.max(1, results.length));
       } else if (e.key === 'ArrowUp') {
@@ -64,11 +89,9 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, results, selectedIndex, onClose, onSelectStock]);
 
-  const handleSearch = async (val: string) => {
+  const handleSearch = (val: string) => {
     setQuery(val);
     setSelectedIndex(0);
-    const res = await api.searchStocks(val);
-    setResults(res);
   };
 
   if (!isOpen) return null;
@@ -78,6 +101,9 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
       <div
         className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 px-4 bg-[var(--color-ink)]/10 backdrop-blur-md"
         onClick={onClose}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search stocks"
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: -8 }}
@@ -85,6 +111,8 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
           exit={{ opacity: 0, scale: 0.96, y: -8 }}
           transition={{ duration: 0.18 }}
           className="w-full max-w-xl rounded-2xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-2xl overflow-hidden"
+          ref={panelRef}
+          tabIndex={-1}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Search Input Bar */}
@@ -174,7 +202,8 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <span className="font-mono text-sm font-medium text-[var(--color-ink)] block">
-                          ₹{stock.currentPrice.toFixed(2)}
+                          {currencySymbol(stock.exchange)}
+                          {stock.currentPrice.toFixed(2)}
                         </span>
                         <span
                           className={`font-mono text-[11px] font-medium ${

@@ -1,7 +1,16 @@
 import { NextFunction, Request, Response } from 'express';
-import { User, createClient } from '@supabase/supabase-js';
+import { SupabaseClient, User, createClient } from '@supabase/supabase-js';
+import { getSupabaseConfig, isDemoMode, isSupabaseConfigured } from '../config.js';
 
-const supabaseAuth = createClient(process.env.VITE_SUPABASE_URL || '', process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '');
+let supabaseAuth: SupabaseClient | null = null;
+
+function getAuthClient(): SupabaseClient {
+  if (!supabaseAuth) {
+    const { url, publishableKey } = getSupabaseConfig();
+    supabaseAuth = createClient(url, publishableKey);
+  }
+  return supabaseAuth;
+}
 
 export interface AuthenticatedRequest extends Request {
   user?: User | null;
@@ -10,13 +19,14 @@ export interface AuthenticatedRequest extends Request {
 
 /**
  * Verifies the Supabase JWT from the Authorization header.
- * When VITE_DEMO_MODE=true, requests without a token pass through and use the in-memory demo session.
+ * In demo mode (VITE_DEMO_MODE=true, or Supabase not configured), requests without a token pass through
+ * and use the in-memory demo session.
  */
 export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    if (process.env.VITE_DEMO_MODE === 'true') {
+  if (!authHeader || !authHeader.startsWith('Bearer ') || !isSupabaseConfigured()) {
+    if (isDemoMode()) {
       req.user = null;
       req.token = undefined;
       return next();
@@ -25,12 +35,17 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
   }
 
   const token = authHeader.split(' ')[1];
-  const {
-    data: { user },
-    error,
-  } = await supabaseAuth.auth.getUser(token);
+  let user: User | null;
+  try {
+    const { data, error } = await getAuthClient().auth.getUser(token);
+    user = error ? null : data.user;
+  } catch (err) {
+    // Express 4 does not catch rejected promises from async middleware, so handle it here.
+    console.error('[Auth] Token verification failed:', err);
+    return res.status(503).json({ error: 'Authentication service unavailable' });
+  }
 
-  if (error || !user) {
+  if (!user) {
     return res.status(401).json({ error: 'Unauthorized: Invalid token' });
   }
 

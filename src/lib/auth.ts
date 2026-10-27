@@ -1,4 +1,10 @@
+import { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+
+function client(): SupabaseClient {
+  if (!supabase) throw { message: 'Sign-in is not available: Supabase is not configured.' } as AuthError;
+  return supabase;
+}
 
 export interface AuthError {
   message: string;
@@ -11,7 +17,7 @@ export const auth = {
    * Supabase automatically handles the profile creation via PostgreSQL trigger.
    */
   async signUp(email: string, password: string, displayName?: string) {
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await client().auth.signUp({
       email,
       password,
       options: {
@@ -29,7 +35,7 @@ export const auth = {
    * Sign in an existing user with email and password.
    */
   async signIn(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await client().auth.signInWithPassword({
       email,
       password,
     });
@@ -42,6 +48,7 @@ export const auth = {
    * Sign out the current user.
    */
   async signOut() {
+    if (!supabase) return;
     const { error } = await supabase.auth.signOut();
     if (error) throw this.formatError(error);
   },
@@ -50,6 +57,7 @@ export const auth = {
    * Get the current authenticated user session securely.
    */
   async getCurrentUser() {
+    if (!supabase) return null;
     const {
       data: { user },
       error,
@@ -62,6 +70,7 @@ export const auth = {
    * Listen for authentication state changes (login, logout, session expiration).
    */
   onAuthStateChange(callback: (event: string, session: any) => void) {
+    if (!supabase) return { data: { subscription: { unsubscribe: () => {} } } };
     return supabase.auth.onAuthStateChange(callback);
   },
 
@@ -69,10 +78,15 @@ export const auth = {
    * Formats raw Supabase errors into user-friendly messages.
    */
   formatError(error: any): AuthError {
-    let message = 'An unexpected error occurred. Please try again.';
+    // Unrecognised errors keep Supabase's own message rather than a generic one.
+    let message = error?.message || 'An unexpected error occurred. Please try again.';
     const code = error.code || error.status?.toString();
 
-    if (error.message?.toLowerCase().includes('invalid login credentials')) {
+    if (error.status === 429 || error.message?.toLowerCase().includes('rate limit')) {
+      message = 'Too many attempts. Please wait a minute and try again.';
+    } else if (error.message?.toLowerCase().includes('email not confirmed')) {
+      message = 'Please confirm your email address first — check your inbox for the link.';
+    } else if (error.message?.toLowerCase().includes('invalid login credentials')) {
       message = 'Invalid email or password. Please try again.';
     } else if (error.message?.toLowerCase().includes('already registered')) {
       message = 'An account with this email already exists.';

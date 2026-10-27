@@ -96,13 +96,14 @@ export class MockMarketDataProvider implements MarketDataProvider {
 
   async searchSymbols(query: string): Promise<SearchResult[]> {
     const q = query.toLowerCase().trim();
-    return BASE_STOCKS.filter((s) => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)).map(
-      (s) => ({
-        symbol: s.symbol,
-        name: s.name,
-        exchange: s.exchange,
-        type: s.sector,
-      }),
-    );
+    // Matches symbol, company name, sector and tags (e.g. "Banking", "EV", "Tata Group").
+    return BASE_STOCKS.filter((s) =>
+      [s.symbol, s.name, s.sector, ...s.tags].some((field) => field.toLowerCase().includes(q)),
+    ).map((s) => ({
+      symbol: s.symbol,
+      name: s.name,
+      exchange: s.exchange,
+      type: s.sector,
+    }));
   }
 }

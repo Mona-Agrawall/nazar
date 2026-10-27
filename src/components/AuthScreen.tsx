@@ -24,10 +24,9 @@ export const AuthScreen: React.FC = () => {
       if (isLogin) {
         await auth.signIn(email, password);
       } else {
-        await auth.signUp(email, password, displayName);
-        // Supabase might require email confirmation, if so user won't be logged in automatically
-        // Check if we didn't get an active session (user is returned but without session if email confirmation is required)
-        setIsEmailSent(true);
+        const { session } = await auth.signUp(email, password, displayName);
+        // With email confirmation enabled Supabase returns no session; otherwise the user is already signed in.
+        if (!session) setIsEmailSent(true);
       }
     } catch (err: any) {
       setError((err as AuthError).message);

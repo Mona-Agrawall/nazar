@@ -15,6 +15,9 @@ import {
 } from 'lucide-react';
 import { StockDetailExtended, Timeframe, PricePoint } from '../types';
 import { api } from '../services/api';
+import { currencySymbol } from '../lib/currency';
+import { useEscapeKey } from '../lib/useEscapeKey';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
 interface StockDetailModalProps {
   symbol: string | null;
@@ -24,6 +27,15 @@ interface StockDetailModalProps {
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '1Y', 'ALL'];
 
+/** Hover label: time of day for 1D, day + time for 1W, a date for longer ranges. */
+function formatPointTime(timestamp: number, timeframe: Timeframe): string {
+  const date = new Date(timestamp);
+  if (timeframe === '1D') return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  if (timeframe === '1W')
+    return date.toLocaleString('en-IN', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onClose, onOpenWhyModal }) => {
   const [stockDetail, setStockDetail] = useState<StockDetailExtended | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,41 +43,50 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
   const [hoveredPoint, setHoveredPoint] = useState<(PricePoint & { x: number; y: number }) | null>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [isExplanationLoading, setIsExplanationLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
-  // Escape key
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscapeKey(onClose);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, !!symbol);
 
   // Load stock detail, then its explanation
   useEffect(() => {
     if (!symbol) return;
+    // Ignore responses for a symbol that is no longer shown
+    let cancelled = false;
     setLoading(true);
+    setLoadError(null);
     setStockDetail(null);
     setExplanation(null);
 
     api
       .getStockDetail(symbol)
       .then((data) => {
+        if (cancelled) return;
         setStockDetail(data);
         setLoading(false);
 
         // Explanation is built from the stock's computed facts
         setIsExplanationLoading(true);
-        return api.getExplanation(data);
+        return api.getExplanation(data).then((text) => {
+          if (!cancelled) setExplanation(text);
+        });
       })
-      .then(setExplanation)
-      .catch(() => {
+      .catch((err) => {
+        if (cancelled) return;
         setLoading(false);
-        setExplanation(null);
+        setLoadError(err instanceof Error ? err.message : 'Could not load this stock.');
       })
-      .finally(() => setIsExplanationLoading(false));
-  }, [symbol]);
+      .finally(() => {
+        if (!cancelled) setIsExplanationLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [symbol, reloadKey]);
 
   if (!symbol) return null;
 
@@ -127,6 +148,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
         exit={{ opacity: 0, scale: 0.97, y: 12 }}
         transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
         className="relative w-full max-w-4xl rounded-2xl glass-panel shadow-[0_24px_64px_rgba(0,0,0,0.06)] text-[var(--color-ink)] overflow-hidden my-auto"
+        ref={panelRef}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Header ──────────────────────────────────────────────────────── */}
@@ -165,7 +188,18 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
           </button>
         </div>
 
-        {loading || !stockDetail ? (
+        {loadError ? (
+          <div className="p-12 text-center text-[var(--color-muted)]" role="alert">
+            <p className="text-sm text-[var(--color-ink)] mb-1">Couldn't load {symbol}.</p>
+            <p className="text-xs font-normal mb-4">{loadError}</p>
+            <button
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="px-4 py-1.5 rounded-full bg-[var(--color-panel)] hover:bg-[var(--color-border-soft)] border border-[var(--color-border)] text-xs text-[var(--color-ink)] transition-colors"
+            >
+              Try again
+            </button>
+          </div>
+        ) : loading || !stockDetail ? (
           <div className="p-12 text-center text-[var(--color-muted)]" role="status" aria-label="Loading stock data">
             <div
               className="w-6 h-6 border-2 border-[var(--color-green)] border-t-transparent rounded-full animate-spin mx-auto mb-3"
@@ -193,7 +227,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
                 <div>
                   <div className="text-[9px] uppercase tracking-normal text-[var(--color-faint)] mb-1">Last seen</div>
                   <div className="font-mono text-2xl text-[var(--color-muted)] font-normal tabular-nums">
-                    ₹{(stockDetail.userDelta?.previousPrice ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    {currencySymbol(stockDetail.exchange)}
+                    {(stockDetail.userDelta?.previousPrice ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div className="text-[var(--color-border)] font-mono text-xl" aria-hidden>
@@ -202,7 +237,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
                 <div>
                   <div className="text-[9px] uppercase tracking-normal text-[var(--color-faint)] mb-1">Now</div>
                   <div className="font-mono text-2xl text-[var(--color-ink)] font-medium tabular-nums">
-                    ₹{(stockDetail.currentPrice ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    {currencySymbol(stockDetail.exchange)}
+                    {(stockDetail.currentPrice ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div>
@@ -253,7 +289,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
                 <div>
                   <div className="flex items-baseline gap-3">
                     <span className="text-3xl sm:text-4xl font-mono font-normal text-[var(--color-ink)] tabular-nums">
-                      ₹{displayPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      {currencySymbol(stockDetail.exchange)}
+                      {displayPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </span>
                     <span
                       className={`inline-flex items-center text-sm font-mono font-medium ${isPositive ? 'text-[var(--color-green)]' : 'text-[var(--color-red)]'}`}
@@ -270,14 +307,19 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
                   <div className="text-xs text-[var(--color-muted)] font-mono mt-0.5">
                     {hoveredPoint ? (
                       <span>
-                        Time: <strong className="text-[var(--color-ink)]">{hoveredPoint.time}</strong> · Vol:{' '}
+                        {timeframe === '1D' ? 'Time' : 'Date'}:{' '}
+                        <strong className="text-[var(--color-ink)]">
+                          {formatPointTime(hoveredPoint.timestamp, timeframe)}
+                        </strong>{' '}
+                        · Vol:{' '}
                         <strong className="text-[var(--color-ink)]">
                           {(hoveredPoint.volume / 1_000_000).toFixed(2)}M
                         </strong>
                       </span>
                     ) : (
                       <span>
-                        Range: ₹{(stockDetail.dayLow ?? 0).toLocaleString('en-IN')} – ₹
+                        Range: {currencySymbol(stockDetail.exchange)}
+                        {(stockDetail.dayLow ?? 0).toLocaleString('en-IN')} – {currencySymbol(stockDetail.exchange)}
                         {(stockDetail.dayHigh ?? 0).toLocaleString('en-IN')}
                       </span>
                     )}
@@ -409,7 +451,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
                 {
                   icon: <TrendingUp className="w-3.5 h-3.5 text-[var(--color-muted)]" aria-hidden />,
                   label: '30D High',
-                  value: `₹${(stockDetail.high30d ?? 0).toLocaleString('en-IN')}`,
+                  value: `${currencySymbol(stockDetail.exchange)}${(stockDetail.high30d ?? 0).toLocaleString('en-IN')}`,
                   sub:
                     (stockDetail.currentPrice ?? 0) >= (stockDetail.high30d ?? 0)
                       ? 'Broken out ↑'
@@ -424,8 +466,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
                 {
                   icon: <Layers className="w-3.5 h-3.5 text-[var(--color-muted)]" aria-hidden />,
                   label: '52W High / Low',
-                  value: `₹${(stockDetail.high52w ?? 0).toLocaleString('en-IN')}`,
-                  sub: `Low ₹${(stockDetail.low52w ?? 0).toLocaleString('en-IN')} · ${stockDetail.marketCap ?? '—'}`,
+                  value: `${currencySymbol(stockDetail.exchange)}${(stockDetail.high52w ?? 0).toLocaleString('en-IN')}`,
+                  sub: `Low ${currencySymbol(stockDetail.exchange)}${(stockDetail.low52w ?? 0).toLocaleString('en-IN')} · ${stockDetail.marketCap ?? '—'}`,
                 },
               ].map((m) => (
                 <div
@@ -464,7 +506,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
                         <p className="text-xs text-[var(--color-muted)] font-normal leading-relaxed">{e.explanation}</p>
                       </div>
                       <span
-                        className={`font-mono text-xs font-medium px-2 py-0.5 rounded shrink-0 ${e.changeType.includes('up') || e.changeType === 'breakout_high' ? 'bg-[var(--color-green-soft)] text-[var(--color-green)]' : 'bg-[var(--color-red-soft)] text-[var(--color-red)]'}`}
+                        className={`font-mono text-xs font-medium px-2 py-0.5 rounded shrink-0 ${e.change.startsWith('+') ? 'bg-[var(--color-green-soft)] text-[var(--color-green)]' : 'bg-[var(--color-red-soft)] text-[var(--color-red)]'}`}
                       >
                         {e.change}
                       </span>

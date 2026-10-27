@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -13,6 +13,9 @@ import {
 } from 'lucide-react';
 import { Stock, AttentionFactor } from '../types';
 import { api } from '../services/api';
+import { currencySymbol } from '../lib/currency';
+import { useEscapeKey } from '../lib/useEscapeKey';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
 interface AttentionWhyModalProps {
   stock: Stock | null;
@@ -41,25 +44,37 @@ export const AttentionWhyModal: React.FC<AttentionWhyModalProps> = ({ stock, onC
   const [explanation, setExplanation] = useState<string | null>(null);
   const [isExplanationLoading, setIsExplanationLoading] = useState(false);
 
-  // Close on Escape
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscapeKey(onClose, !!stock);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, !!stock);
 
-  // Fetch the explanation whenever a different stock opens
+  // Fetch the explanation when the stock or its facts change (not on every poll's new object)
+  const symbol = stock?.symbol;
+  const priceChangePct = stock?.userDelta.percentDiff;
+  const volumeMultiple = stock?.volumeRatio;
+  const timeSinceLastSeen = stock?.userDelta.lastSeenTimeFormatted;
   useEffect(() => {
-    if (!stock) return;
+    if (!symbol) return;
+    let cancelled = false;
     setExplanation(null);
     setIsExplanationLoading(true);
     api
-      .getExplanation(stock)
-      .then(setExplanation)
-      .finally(() => setIsExplanationLoading(false));
-  }, [stock?.symbol]);
+      .getExplanationFor({
+        symbol,
+        priceChangePct: priceChangePct ?? 0,
+        volumeMultiple: volumeMultiple ?? 1,
+        timeSinceLastSeen: timeSinceLastSeen ?? '',
+      })
+      .then((text) => {
+        if (!cancelled) setExplanation(text);
+      })
+      .finally(() => {
+        if (!cancelled) setIsExplanationLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [symbol, priceChangePct, volumeMultiple, timeSinceLastSeen]);
 
   if (!stock) return null;
 
@@ -85,6 +100,8 @@ export const AttentionWhyModal: React.FC<AttentionWhyModalProps> = ({ stock, onC
           exit={{ opacity: 0, scale: 0.96, y: 12 }}
           transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
           className="relative w-full max-w-lg rounded-2xl glass-panel shadow-[0_24px_64px_rgba(0,0,0,0.06)] text-[var(--color-ink)] overflow-hidden"
+          ref={panelRef}
+          tabIndex={-1}
           onClick={(e) => e.stopPropagation()}
         >
           {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -210,7 +227,9 @@ export const AttentionWhyModal: React.FC<AttentionWhyModalProps> = ({ stock, onC
             {/* ── Delta comparison footer ──────────────────────────────────── */}
             <div className="pt-4 border-t border-[var(--color-border-soft)] flex items-center justify-between">
               <div className="text-[11px] text-[var(--color-muted)] font-normal">
-                Last seen at ₹{stock.userDelta.previousPrice.toFixed(2)} · Now ₹{stock.currentPrice.toFixed(2)}
+                Last seen at {currencySymbol(stock.exchange)}
+                {stock.userDelta.previousPrice.toFixed(2)} · Now {currencySymbol(stock.exchange)}
+                {stock.currentPrice.toFixed(2)}
                 <span
                   className={`ml-2 font-mono font-medium ${isPos ? 'text-[var(--color-green)]' : 'text-[var(--color-red)]'}`}
                 >

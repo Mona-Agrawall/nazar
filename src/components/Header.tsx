@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Search, RotateCcw, CheckCircle2, ChevronDown, LogOut, User as UserIcon } from 'lucide-react';
 import { AppTab, FeedStatus } from '../types';
 import { auth } from '../lib/auth';
+import { useAuth } from '../contexts/AuthContext';
+import { useEscapeKey } from '../lib/useEscapeKey';
 
 interface HeaderProps {
   activeTab: AppTab;
@@ -27,8 +29,25 @@ export const Header: React.FC<HeaderProps> = ({
   isSyncing,
 }) => {
   const [showFeedPopover, setShowFeedPopover] = useState(false);
+  const feedPopoverRef = useRef<HTMLDivElement>(null);
+  const { user, canExitDemo, setDemoMode } = useAuth();
+
+  // The feed popover closes on Escape or a click outside it
+  useEscapeKey(() => setShowFeedPopover(false), showFeedPopover);
+  useEffect(() => {
+    if (!showFeedPopover) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!feedPopoverRef.current?.contains(e.target as Node)) setShowFeedPopover(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [showFeedPopover]);
 
   const handleSignOut = async () => {
+    if (canExitDemo) {
+      setDemoMode(false);
+      return;
+    }
     try {
       await auth.signOut();
     } catch (error) {
@@ -48,18 +67,21 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
         {/* Left: Brand logo & live pulse */}
         <div className="flex items-center gap-8">
-          <div onClick={() => onTabChange('pulse')} className="flex items-center gap-3 cursor-pointer group">
-            <div className="relative flex items-center justify-center transition-colors">
+          <button
+            type="button"
+            onClick={() => onTabChange('pulse')}
+            aria-label="Nazar — go to overview"
+            className="flex items-center gap-3 cursor-pointer group text-left"
+          >
+            <span className="relative flex items-center justify-center transition-colors">
               <img src="/nazar-favicon.png" alt="Nazar Icon" className="w-8 h-8 object-contain" />
               <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-green)] opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-green)]"></span>
               </span>
-            </div>
-            <div>
-              <span className="text-lg sm:text-xl font-medium text-[var(--color-ink)] block">NAZAR</span>
-            </div>
-          </div>
+            </span>
+            <span className="text-lg sm:text-xl font-medium text-[var(--color-ink)] block">NAZAR</span>
+          </button>
 
           {/* Editorial Navigation tabs */}
           <nav className="hidden md:flex items-center gap-6 text-sm uppercase tracking-normal font-semibold text-[var(--color-ink-soft)]">
@@ -94,31 +116,34 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {/* Editorial Session Time Display & Simulator Trigger */}
-          <div
+          <button
+            type="button"
             onClick={onOpenTimeTravel}
             title="Simulate time away to test Nazar calculation"
             className="cursor-pointer group text-right hidden lg:block shrink-0"
           >
-            <div className="text-[10px] uppercase font-medium text-[var(--color-faint)] group-hover:text-[var(--color-muted)] transition-colors whitespace-nowrap">
+            <span className="block text-[10px] uppercase font-medium text-[var(--color-faint)] group-hover:text-[var(--color-muted)] transition-colors whitespace-nowrap">
               Session Time
-            </div>
-            <div className="text-xs font-mono font-semibold text-[var(--color-ink)] flex items-center justify-end gap-1 whitespace-nowrap">
+            </span>
+            <span className="text-xs font-mono font-semibold text-[var(--color-ink)] flex items-center justify-end gap-1 whitespace-nowrap">
               <span>{awayFormatted} away</span>
               <span className="text-[9px] text-[var(--color-green)] underline underline-offset-2 decoration-[var(--color-border)] group-hover:decoration-[var(--color-green)]">
                 Simulate
               </span>
-            </div>
-          </div>
+            </span>
+          </button>
 
           {/* Feed state indicator with glowing dot & tooltip popover */}
-          <div className="relative shrink-0">
+          <div ref={feedPopoverRef} className="relative shrink-0">
             <button
               onClick={() => setShowFeedPopover(!showFeedPopover)}
+              aria-expanded={showFeedPopover}
+              aria-haspopup="dialog"
               className="flex items-center gap-2 sm:gap-3 bg-[var(--color-background)] hover:bg-[var(--color-panel)] px-3 sm:px-4 py-1.5 rounded-full border border-[var(--color-border)] shadow-sm hover:shadow-md inner-highlight hover:-translate-y-[0.5px] transition-all"
             >
               <div className="w-2 h-2 rounded-full bg-[var(--color-green)] shadow-[0_0_8px_var(--color-green-soft)] shrink-0" />
               <span className="text-[9px] sm:text-[10px] uppercase text-[var(--color-ink-soft)] font-semibold font-mono whitespace-nowrap">
-                {feedStatus?.mode === 'LIVE' ? 'Market Open' : 'Delayed 15m'}
+                {feedStatus?.label ?? 'Market data'}
               </span>
               <ChevronDown className="w-3 h-3 text-[var(--color-faint)] shrink-0" />
             </button>
@@ -128,11 +153,11 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] pb-2">
                   <span className="font-semibold text-[var(--color-ink)] ">Market Feed Status</span>
                   <span className="px-2 py-0.5 rounded bg-[var(--color-green-soft)] text-[var(--color-green)] text-[10px] font-mono uppercase ">
-                    {feedStatus?.mode || 'DELAYED'}
+                    {feedStatus?.mode || 'UNKNOWN'}
                   </span>
                 </div>
                 <p className="text-[var(--color-muted)] leading-relaxed text-[11px]">
-                  {feedStatus?.detail || 'Market ticks calculated against NSE/BSE delayed market books.'}
+                  {feedStatus?.detail || 'Feed status unavailable.'}
                 </p>
                 <div className="flex items-center justify-between text-[10px] text-[var(--color-faint)] pt-1 font-mono">
                   <span>Last Engine Tick</span>
@@ -166,16 +191,24 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* User Profile / Auth Actions */}
           <div className="flex items-center gap-3 pl-4 ml-2 border-l border-[var(--color-border-soft)]">
-            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-[var(--color-panel)] border border-[var(--color-border-soft)] shadow-sm">
+            <div
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-[var(--color-panel)] border border-[var(--color-border-soft)] shadow-sm"
+              title={user?.email ?? 'Demo mode'}
+              aria-label={user?.email ? `Signed in as ${user.email}` : 'Demo mode'}
+            >
               <UserIcon className="w-4 h-4 text-[var(--color-ink-soft)]" />
             </div>
-            <button
-              onClick={handleSignOut}
-              title="Sign Out"
-              className="p-1.5 rounded-full hover:bg-[var(--color-red-soft)] text-[var(--color-faint)] hover:text-[var(--color-red)] transition-colors"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
+            {/* Signed-in users sign out; "Skip for now" users can return to sign-in; forced demo mode has neither */}
+            {(user || canExitDemo) && (
+              <button
+                onClick={handleSignOut}
+                title={user ? 'Sign Out' : 'Exit demo'}
+                aria-label={user ? 'Sign out' : 'Exit demo mode and return to sign-in'}
+                className="p-1.5 rounded-full hover:bg-[var(--color-red-soft)] text-[var(--color-faint)] hover:text-[var(--color-red)] transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -35,7 +35,7 @@ function generateSparkline(start: number, end: number, points = 24, volatility =
 
 function toPricePoints(history: HistoricalData): PricePoint[] {
   return history.data.map((d) => ({
-    time: new Date(d.datetime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    timestamp: new Date(d.datetime).getTime(),
     price: d.close,
     volume: d.volume,
   }));
@@ -45,9 +45,12 @@ export function getIndices(): MarketIndex[] {
   return MARKET_INDICES;
 }
 
-/** Returns stocks enriched with attention scores and the change since the user's last visit. */
+/**
+ * Returns stocks enriched with attention scores and the change since the user's last visit.
+ * Omitting `symbols` returns the whole universe; an empty array returns no stocks.
+ */
 export async function getStocks(session: UserSession, symbols?: string[]): Promise<Stock[]> {
-  const list = symbols && symbols.length > 0 ? BASE_STOCKS.filter((s) => symbols.includes(s.symbol)) : BASE_STOCKS;
+  const list = symbols ? BASE_STOCKS.filter((s) => symbols.includes(s.symbol)) : BASE_STOCKS;
 
   return Promise.all(
     list.map(async (s) => {
@@ -64,8 +67,9 @@ export async function getStocks(session: UserSession, symbols?: string[]): Promi
       const volumeRatio = volume / s.avgVolume30d;
 
       const openPrice = s.symbol === 'HDFCBANK' ? 1695.0 : s.symbol === 'RELIANCE' ? 2360.0 : yesterdayClose * 1.002;
-      const dayHigh = Math.max(currentPrice, openPrice, s.high30d * 0.998);
-      const dayLow = Math.min(currentPrice, openPrice, yesterdayClose * 0.99);
+      // Only the open and current price are known for today, so the range is bounded by them.
+      const dayHigh = Math.max(currentPrice, openPrice);
+      const dayLow = Math.min(currentPrice, openPrice);
 
       const previousPrice = session.stockSnapshots[s.symbol]?.price ?? yesterdayClose;
       const priceDiff = currentPrice - previousPrice;
@@ -149,14 +153,21 @@ export async function getStockDetail(session: UserSession, symbol: string): Prom
   };
 }
 
-/** Timeline events during the user's absence, newest first. */
+/** Timeline events during the user's absence (never in the future), newest first. */
 export function getEvents(session: UserSession, symbols?: string[]): MarketEvent[] {
   const startOfAway = Date.now() - session.simulatedAwaySeconds * 1000;
 
-  return EVENT_TEMPLATES.filter((e) => !symbols || symbols.length === 0 || symbols.includes(e.stockSymbol))
+  return EVENT_TEMPLATES.filter((e) => !symbols || symbols.includes(e.stockSymbol))
+    .filter((e) => e.offsetSeconds <= session.simulatedAwaySeconds)
     .map(({ offsetSeconds, ...event }) => ({
       ...event,
       timestamp: startOfAway + offsetSeconds * 1000,
+      // Event stocks trade on NSE, so times are shown in IST regardless of the server's timezone.
+      timeFormatted: new Date(startOfAway + offsetSeconds * 1000).toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Kolkata',
+      }),
       dismissed: session.dismissedEventIds.has(event.id),
       acknowledged: session.acknowledgedEventIds.has(event.id),
     }))
@@ -169,8 +180,13 @@ export async function getMarketPulse(session: UserSession, watchlistSymbols: str
   const events = getEvents(session, watchlistSymbols).filter((e) => !e.dismissed);
   const awayFormatted = formatDuration(session.simulatedAwaySeconds);
 
-  const highAttentionCount = stocks.filter((s) => s.attentionScore >= 65).length;
-  const meaningfulCount = Math.max(3, highAttentionCount);
+  const meaningfulStocks = stocks
+    .filter((s) => s.attentionScore >= 65)
+    .sort((a, b) => b.attentionScore - a.attentionScore);
+  const meaningfulCount = meaningfulStocks.length;
+  const highlights = meaningfulStocks
+    .slice(0, 3)
+    .map((s) => `${s.symbol} ${s.userDelta.percentDiff >= 0 ? '+' : ''}${s.userDelta.percentDiff.toFixed(1)}%`);
   const avgChange = stocks.reduce((sum, s) => sum + s.userDelta.percentDiff, 0) / (stocks.length || 1);
 
   return {
@@ -185,7 +201,10 @@ export async function getMarketPulse(session: UserSession, watchlistSymbols: str
     eventsCount: events.length,
     overallWatchlistChange: Number(avgChange.toFixed(2)),
     topHighlights: events.slice(0, 4),
-    narrativeSummary: `You were away for ${awayFormatted}. ${meaningfulCount} things changed meaningfully across your watchlist. RELIANCE gained +3.8% on 2.4× volume, TCS breached its 30-day resistance, while HDFCBANK reversed intraday (-2.7%).`,
+    narrativeSummary:
+      meaningfulCount === 0
+        ? `You were away for ${awayFormatted}. Nothing in your watchlist changed meaningfully.`
+        : `You were away for ${awayFormatted}. ${meaningfulCount} ${meaningfulCount === 1 ? 'thing' : 'things'} changed meaningfully across your watchlist: ${highlights.join(', ')}.`,
   };
 }
 
@@ -204,13 +223,14 @@ export async function searchStocks(query: string): Promise<Stock[]> {
   return getStocks(searchSession, symbols);
 }
 
+/** Prices always come from the built-in dataset; only symbol search can use a live provider. */
 export function getFeedStatus(): FeedStatus {
   return {
-    mode: isLiveProvider ? 'LIVE' : 'DELAYED',
-    label: isLiveProvider ? 'Market data · Live' : 'Market data · Delayed 15 min',
+    mode: 'SIMULATED',
+    label: 'Simulated data',
     detail: isLiveProvider
-      ? 'Real-time data stream active via Twelve Data API.'
-      : 'Synchronized with NSE/BSE delayed feed. Attention engine updating every 15s.',
+      ? 'Prices are a built-in demo dataset and do not update. Symbol search uses the Twelve Data API.'
+      : 'Prices are a built-in demo dataset and do not update. Not real market data.',
     lastUpdated: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
   };
 }

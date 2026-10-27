@@ -1,14 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { Watchlist } from '../../src/types.js';
 import { BASE_STOCKS } from '../data/stockUniverse.js';
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
-const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY || '';
+import { getSupabaseConfig, isSupabaseConfigured } from '../config.js';
+import { ClientError } from '../errors.js';
 
 // User-scoped client: every query runs as the user, so PostgreSQL Row-Level Security applies.
 function createUserClient(token: string) {
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  const { url, publishableKey } = getSupabaseConfig();
+  return createClient(url, publishableKey, {
     global: {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -17,14 +16,18 @@ function createUserClient(token: string) {
   });
 }
 
-// Admin client (bypasses RLS) — only used to seed the stocks table.
-const adminClient = createClient(supabaseUrl, supabaseSecretKey);
-
 export const supabaseRepository = {
   /**
-   * Seed the public.stocks table using Admin privileges.
+   * Seed the public.stocks table using Admin privileges. Skipped when Supabase is not configured (demo mode).
    */
   async ensureStocksSeeded() {
+    const { url, secretKey } = getSupabaseConfig();
+    if (!isSupabaseConfigured() || !secretKey) {
+      console.log('[Supabase] Not configured — skipping stock seeding (demo mode).');
+      return;
+    }
+    // Admin client (bypasses RLS) — only used to seed the stocks table.
+    const adminClient = createClient(url, secretKey);
     console.log('[Supabase] Verifying master stock data...');
     const stocksToSeed = BASE_STOCKS.map((s) => ({
       symbol: s.symbol,
@@ -43,15 +46,18 @@ export const supabaseRepository = {
   },
 
   /**
-   * Fetch all watchlists for a user.
+   * Fetch all watchlists for a user. `ensureDefault` creates the default watchlist on first use;
+   * callers that only read (polling, edits) skip that extra RPC.
    */
-  async getWatchlists(token: string) {
+  async getWatchlists(token: string, { ensureDefault = true }: { ensureDefault?: boolean } = {}) {
     const db = createUserClient(token);
 
-    // Attempt to init default watchlist — may fail if the user profile doesn't exist yet (expected in demo mode)
-    const { error: initError } = await db.rpc('ensure_default_watchlist');
-    if (initError && !initError.message.includes('foreign key')) {
-      console.warn('[Supabase] ensure_default_watchlist:', initError.message);
+    if (ensureDefault) {
+      // Attempt to init default watchlist — may fail if the user profile doesn't exist yet (expected in demo mode)
+      const { error: initError } = await db.rpc('ensure_default_watchlist');
+      if (initError && !initError.message.includes('foreign key')) {
+        console.warn('[Supabase] ensure_default_watchlist:', initError.message);
+      }
     }
 
     // Fetch watchlists
@@ -99,7 +105,6 @@ export const supabaseRepository = {
     const { data, error } = await db.rpc('create_watchlist_with_items', {
       p_name: name,
       p_symbols: symbols,
-      p_is_default: false,
     });
 
     if (error) throw error;
@@ -112,9 +117,15 @@ export const supabaseRepository = {
   async updateWatchlist(token: string, watchlistId: string, name?: string, symbols?: string[], setActive?: boolean) {
     const db = createUserClient(token);
 
-    // If changing name and/or symbols, use the RPC
+    // Replacing symbols goes through the RPC; a name-only change must not touch the items.
     // If only setActive is true, we just update the profile
-    if (name || symbols) {
+    if (name && !symbols) {
+      const { error } = await db
+        .from('watchlists')
+        .update({ name, updated_at: new Date().toISOString() })
+        .eq('id', watchlistId);
+      if (error) throw error;
+    } else if (symbols) {
       // If name isn't provided but we are replacing items, we need the current name to pass to RPC
       let finalName = name;
       if (!finalName) {
@@ -125,7 +136,7 @@ export const supabaseRepository = {
       const { error } = await db.rpc('replace_watchlist_items', {
         p_watchlist_id: watchlistId,
         p_name: finalName,
-        p_symbols: symbols || [],
+        p_symbols: symbols,
       });
       if (error) throw error;
     }
@@ -140,7 +151,7 @@ export const supabaseRepository = {
     }
 
     // Return the updated shape by re-fetching
-    const { watchlists } = await this.getWatchlists(token);
+    const { watchlists } = await this.getWatchlists(token, { ensureDefault: false });
     return watchlists.find((w) => w.id === watchlistId);
   },
 
@@ -153,17 +164,19 @@ export const supabaseRepository = {
     // First, check if it's the default watchlist (RLS might allow delete, but app logic forbids)
     const { data: wl } = await db.from('watchlists').select('is_default').eq('id', watchlistId).single();
     if (wl?.is_default) {
-      throw new Error('Cannot delete the default watchlist');
+      throw new ClientError('Cannot delete the default watchlist');
     }
 
     const { error } = await db.from('watchlists').delete().eq('id', watchlistId);
     if (error) throw error;
 
-    // We must return the new active ID (fallback to first available)
-    const { watchlists } = await this.getWatchlists(token);
-    const newActiveId = watchlists[0]?.id || null;
+    // The FK sets profiles.active_watchlist_id to NULL only when the active watchlist was deleted;
+    // otherwise the user's current selection stays as it is.
+    const { data: profile } = await db.from('profiles').select('active_watchlist_id').single();
+    if (profile?.active_watchlist_id) return profile.active_watchlist_id as string;
 
-    // Update profile if active was deleted
+    const { watchlists } = await this.getWatchlists(token, { ensureDefault: false });
+    const newActiveId = watchlists[0]?.id || null;
     const {
       data: { user },
     } = await db.auth.getUser();

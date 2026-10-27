@@ -1,7 +1,7 @@
 /** Top-level navigation tabs. */
 export type AppTab = 'pulse' | 'watchlist' | 'timeline' | 'indices';
 
-export type FeedStateMode = 'LIVE' | 'DELAYED' | 'STALE' | 'UNAVAILABLE';
+export type FeedStateMode = 'LIVE' | 'DELAYED' | 'SIMULATED' | 'STALE' | 'UNAVAILABLE';
 
 export interface FeedStatus {
   mode: FeedStateMode;
@@ -119,7 +119,8 @@ export interface MarketPulse {
 }
 
 export interface PricePoint {
-  time: string;
+  /** Epoch milliseconds; formatted on the client for the selected timeframe. */
+  timestamp: number;
   price: number;
   volume: number;
 }

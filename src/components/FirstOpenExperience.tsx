@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowRight, Activity } from 'lucide-react';
+import { useEscapeKey } from '../lib/useEscapeKey';
 
 interface FirstOpenExperienceProps {
   onComplete: () => void;
@@ -11,15 +12,7 @@ export const FirstOpenExperience: React.FC<FirstOpenExperienceProps> = ({ onComp
   const [phase, setPhase] = useState<'drawing' | 'morphing' | 'completed'>('drawing');
   const [stageText, setStageText] = useState('Initializing Market Feed...');
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onComplete();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onComplete]);
+  useEscapeKey(onComplete);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -28,8 +21,8 @@ export const FirstOpenExperience: React.FC<FirstOpenExperienceProps> = ({ onComp
     if (!ctx) return;
 
     let animId: number;
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
+    const width = (canvas.width = window.innerWidth);
+    const height = (canvas.height = window.innerHeight);
 
     // Pre-generate smooth price wave
     const pointsCount = 140;
@@ -50,6 +43,7 @@ export const FirstOpenExperience: React.FC<FirstOpenExperienceProps> = ({ onComp
     }
 
     let progress = 0;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const startTime = performance.now();
     const duration = 1800; // 1.8 seconds fast cinematic intro
 
@@ -66,7 +60,8 @@ export const FirstOpenExperience: React.FC<FirstOpenExperienceProps> = ({ onComp
 
     const render = (time: number) => {
       const elapsed = time - startTime;
-      progress = Math.min(1, elapsed / duration);
+      // Reduced motion: draw the finished chart in a single frame.
+      progress = reduceMotion ? 1 : Math.min(1, elapsed / duration);
 
       ctx.clearRect(0, 0, width, height);
 
