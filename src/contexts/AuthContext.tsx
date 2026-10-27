@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { auth } from '../lib/auth';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -23,8 +24,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const [isDemoModeOverride, setIsDemoModeOverride] = useState(false);
 
-  // Demo mode bypasses all auth — the app runs on in-memory session data
-  const isDemoMode = isDemoModeOverride || import.meta.env.VITE_DEMO_MODE === 'true';
+  // Demo mode bypasses all auth — the app runs on in-memory session data.
+  // Without Supabase configuration nobody can sign in, so demo mode is implied.
+  const isDemoMode = isDemoModeOverride || import.meta.env.VITE_DEMO_MODE === 'true' || !isSupabaseConfigured;
 
   useEffect(() => {
     // In demo mode: skip auth entirely, set loading to false immediately

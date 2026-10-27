@@ -1,14 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { Watchlist } from '../../src/types.js';
 import { BASE_STOCKS } from '../data/stockUniverse.js';
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
-const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY || '';
+import { getSupabaseConfig, isSupabaseConfigured } from '../config.js';
 
 // User-scoped client: every query runs as the user, so PostgreSQL Row-Level Security applies.
 function createUserClient(token: string) {
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  const { url, publishableKey } = getSupabaseConfig();
+  return createClient(url, publishableKey, {
     global: {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -17,14 +15,18 @@ function createUserClient(token: string) {
   });
 }
 
-// Admin client (bypasses RLS) — only used to seed the stocks table.
-const adminClient = createClient(supabaseUrl, supabaseSecretKey);
-
 export const supabaseRepository = {
   /**
-   * Seed the public.stocks table using Admin privileges.
+   * Seed the public.stocks table using Admin privileges. Skipped when Supabase is not configured (demo mode).
    */
   async ensureStocksSeeded() {
+    const { url, secretKey } = getSupabaseConfig();
+    if (!isSupabaseConfigured() || !secretKey) {
+      console.log('[Supabase] Not configured — skipping stock seeding (demo mode).');
+      return;
+    }
+    // Admin client (bypasses RLS) — only used to seed the stocks table.
+    const adminClient = createClient(url, secretKey);
     console.log('[Supabase] Verifying master stock data...');
     const stocksToSeed = BASE_STOCKS.map((s) => ({
       symbol: s.symbol,
