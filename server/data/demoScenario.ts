@@ -90,7 +90,7 @@ export const MARKET_INDICES: MarketIndex[] = [
 ];
 
 /** A timeline event, positioned by seconds elapsed since the user left. */
-export type EventTemplate = Omit<MarketEvent, 'timestamp' | 'dismissed' | 'acknowledged'> & {
+export type EventTemplate = Omit<MarketEvent, 'timestamp' | 'timeFormatted' | 'dismissed' | 'acknowledged'> & {
   offsetSeconds: number;
 };
 
@@ -98,7 +98,6 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
   {
     id: 'evt_rel_1',
     offsetSeconds: 2800,
-    timeFormatted: '09:42 AM',
     stockSymbol: 'RELIANCE',
     stockName: 'Reliance Industries',
     title: 'Breakout Above +3.0%',
@@ -112,7 +111,6 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
   {
     id: 'evt_tcs_1',
     offsetSeconds: 4800,
-    timeFormatted: '10:18 AM',
     stockSymbol: 'TCS',
     stockName: 'Tata Consultancy Services',
     title: 'Crossed 30-day High Resistance',
@@ -126,7 +124,6 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
   {
     id: 'evt_hdfc_1',
     offsetSeconds: 7600,
-    timeFormatted: '11:06 AM',
     stockSymbol: 'HDFCBANK',
     stockName: 'HDFC Bank',
     title: 'Intraday Reversal & Volume Spike',
@@ -140,7 +137,6 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
   {
     id: 'evt_infy_1',
     offsetSeconds: 13500,
-    timeFormatted: '12:43 PM',
     stockSymbol: 'INFY',
     stockName: 'Infosys Ltd',
     title: 'Volatility Contraction to Normal Range',
@@ -154,7 +150,6 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
   {
     id: 'evt_tata_1',
     offsetSeconds: 18200,
-    timeFormatted: '02:08 PM',
     stockSymbol: 'TATAMOTORS',
     stockName: 'Tata Motors',
     title: 'Automotive EV Delivery Surge',
@@ -168,7 +163,6 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
   {
     id: 'evt_bharti_1',
     offsetSeconds: 22400,
-    timeFormatted: '03:15 PM',
     stockSymbol: 'BHARTIARTL',
     stockName: 'Bharti Airtel',
     title: 'ARPU Guidance Upgrade',

@@ -152,14 +152,21 @@ export async function getStockDetail(session: UserSession, symbol: string): Prom
   };
 }
 
-/** Timeline events during the user's absence, newest first. */
+/** Timeline events during the user's absence (never in the future), newest first. */
 export function getEvents(session: UserSession, symbols?: string[]): MarketEvent[] {
   const startOfAway = Date.now() - session.simulatedAwaySeconds * 1000;
 
   return EVENT_TEMPLATES.filter((e) => !symbols || symbols.includes(e.stockSymbol))
+    .filter((e) => e.offsetSeconds <= session.simulatedAwaySeconds)
     .map(({ offsetSeconds, ...event }) => ({
       ...event,
       timestamp: startOfAway + offsetSeconds * 1000,
+      // Event stocks trade on NSE, so times are shown in IST regardless of the server's timezone.
+      timeFormatted: new Date(startOfAway + offsetSeconds * 1000).toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Kolkata',
+      }),
       dismissed: session.dismissedEventIds.has(event.id),
       acknowledged: session.acknowledgedEventIds.has(event.id),
     }))
