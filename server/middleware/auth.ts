@@ -35,12 +35,17 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
   }
 
   const token = authHeader.split(' ')[1];
-  const {
-    data: { user },
-    error,
-  } = await getAuthClient().auth.getUser(token);
+  let user: User | null;
+  try {
+    const { data, error } = await getAuthClient().auth.getUser(token);
+    user = error ? null : data.user;
+  } catch (err) {
+    // Express 4 does not catch rejected promises from async middleware, so handle it here.
+    console.error('[Auth] Token verification failed:', err);
+    return res.status(503).json({ error: 'Authentication service unavailable' });
+  }
 
-  if (error || !user) {
+  if (!user) {
     return res.status(401).json({ error: 'Unauthorized: Invalid token' });
   }
 
