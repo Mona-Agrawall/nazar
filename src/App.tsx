@@ -59,36 +59,39 @@ function Dashboard() {
   }, []);
 
   // ── Load market data ──────────────────────────────────────────────────────
-  const loadMarketData = useCallback(async (watchlistId?: string) => {
-    try {
-      const [wlData, idxData, statusData] = await Promise.all([
-        api.getWatchlists(),
-        api.getIndices(),
-        api.getFeedStatus(),
-      ]);
+  const loadMarketData = useCallback(
+    async (watchlistId?: string) => {
+      try {
+        const [wlData, idxData, statusData] = await Promise.all([
+          api.getWatchlists(),
+          api.getIndices(),
+          api.getFeedStatus(),
+        ]);
 
-      applyWatchlists(wlData.watchlists);
-      setIndices(idxData);
-      setFeedStatus(statusData);
+        applyWatchlists(wlData.watchlists);
+        setIndices(idxData);
+        setFeedStatus(statusData);
 
-      const targetWlId = watchlistId || wlData.activeId || wlData.watchlists[0]?.id;
-      setActiveWatchlistId(targetWlId);
+        const targetWlId = watchlistId || wlData.activeId || wlData.watchlists[0]?.id;
+        setActiveWatchlistId(targetWlId);
 
-      const [stockData, allData, pulseData, eventData] = await Promise.all([
-        api.getStocks(targetWlId),
-        api.getAllStocks(),
-        api.getPulse(targetWlId),
-        api.getEvents(targetWlId),
-      ]);
+        const [stockData, allData, pulseData, eventData] = await Promise.all([
+          api.getStocks(targetWlId),
+          api.getAllStocks(),
+          api.getPulse(targetWlId),
+          api.getEvents(targetWlId),
+        ]);
 
-      setStocks(stockData.stocks);
-      setAllAvailableStocks(allData);
-      setPulse(pulseData);
-      setEvents(eventData);
-    } catch (err) {
-      console.error('[Nazar] Failed to load market data', err);
-    }
-  }, [applyWatchlists]);
+        setStocks(stockData.stocks);
+        setAllAvailableStocks(allData);
+        setPulse(pulseData);
+        setEvents(eventData);
+      } catch (err) {
+        console.error('[Nazar] Failed to load market data', err);
+      }
+    },
+    [applyWatchlists],
+  );
 
   // ── Initial load (seeds the demo scenario on a tab's first visit) ────────
   useEffect(() => {
@@ -130,6 +133,10 @@ function Dashboard() {
   // ── Watchlist ─────────────────────────────────────────────────────────────
   const handleSelectWatchlist = async (id: string) => {
     setActiveWatchlistId(id);
+    // Remember the choice server-side so it survives a reload (non-blocking)
+    api
+      .updateWatchlist(id, { setActive: true })
+      .catch((err) => console.error('[Nazar] Failed to save active watchlist', err));
     try {
       const [stockData, pulseData, eventData] = await Promise.all([
         api.getStocks(id),
