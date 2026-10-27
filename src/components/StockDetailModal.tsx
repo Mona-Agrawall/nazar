@@ -464,7 +464,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
                         <p className="text-xs text-[var(--color-muted)] font-normal leading-relaxed">{e.explanation}</p>
                       </div>
                       <span
-                        className={`font-mono text-xs font-medium px-2 py-0.5 rounded shrink-0 ${e.changeType.includes('up') || e.changeType === 'breakout_high' ? 'bg-[var(--color-green-soft)] text-[var(--color-green)]' : 'bg-[var(--color-red-soft)] text-[var(--color-red)]'}`}
+                        className={`font-mono text-xs font-medium px-2 py-0.5 rounded shrink-0 ${e.change.startsWith('+') ? 'bg-[var(--color-green-soft)] text-[var(--color-green)]' : 'bg-[var(--color-red-soft)] text-[var(--color-red)]'}`}
                       >
                         {e.change}
                       </span>

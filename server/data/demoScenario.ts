@@ -128,7 +128,7 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
     stockName: 'HDFC Bank',
     title: 'Intraday Reversal & Volume Spike',
     change: '-2.7%',
-    changeType: 'price_down',
+    changeType: 'volume_surge',
     importance: 'critical',
     explanation:
       'Gap-up to ₹1,695 was forcefully rejected; aggressive institutional selling dumped 14.5M shares down to ₹1,642 support.',
