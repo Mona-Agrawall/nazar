@@ -5,6 +5,9 @@ import { Stock } from '../types';
 import { currencySymbol } from '../lib/currency';
 import { useEscapeKey } from '../lib/useEscapeKey';
 
+const DEFAULT_SYMBOLS = ['RELIANCE', 'TCS'];
+const MAX_NAME_LENGTH = 50; // matches the server limit
+
 interface CreateWatchlistModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -19,10 +22,16 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
   availableStocks,
 }) => {
   const [name, setName] = useState('');
-  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(['RELIANCE', 'TCS']);
+  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(DEFAULT_SYMBOLS);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEscapeKey(onClose, isOpen);
+  const handleClose = () => {
+    setError(null);
+    onClose();
+  };
+
+  useEscapeKey(handleClose, isOpen);
 
   if (!isOpen) return null;
 
@@ -34,10 +43,14 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
     e.preventDefault();
     if (!name.trim()) return;
     setSubmitting(true);
+    setError(null);
     try {
       await onCreate(name.trim(), selectedSymbols);
       setName('');
+      setSelectedSymbols(DEFAULT_SYMBOLS);
       onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create the watchlist. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -47,7 +60,7 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
     <AnimatePresence>
       <div
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--color-ink)]/10 backdrop-blur-md"
-        onClick={onClose}
+        onClick={handleClose}
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 8 }}
@@ -71,7 +84,8 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
             </div>
 
             <button
-              onClick={onClose}
+              onClick={handleClose}
+              aria-label="Close"
               className="p-1.5 rounded-full bg-[var(--color-panel)] hover:bg-[var(--color-border-soft)] text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors"
             >
               <X className="w-4 h-4" />
@@ -79,6 +93,14 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
           </div>
 
           <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+            {error && (
+              <div
+                role="alert"
+                className="p-3 rounded-xl bg-[var(--color-red-soft)] text-xs text-[var(--color-red)] font-normal"
+              >
+                {error}
+              </div>
+            )}
             <div>
               <label className="block text-[10px] font-medium text-[var(--color-faint)] mb-1.5 font-mono uppercase ">
                 Ledger Title
@@ -87,6 +109,7 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                maxLength={MAX_NAME_LENGTH}
                 placeholder="e.g. Sovereign Bluechips, EV Supply Chain..."
                 className="w-full px-4 py-2.5 rounded-xl bg-[var(--color-panel)] border border-[var(--color-border)] text-sm text-[var(--color-ink)] placeholder-[var(--color-faint)] focus:outline-none focus:border-[var(--color-muted)] font-normal"
                 autoFocus
@@ -133,7 +156,7 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
             <div className="pt-4 border-t border-[var(--color-border-soft)] flex gap-2 justify-end">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 className="px-4 py-2 rounded-full bg-[var(--color-panel)] hover:bg-[var(--color-border-soft)] text-xs font-medium text-[var(--color-muted)] transition-colors"
               >
                 Cancel
