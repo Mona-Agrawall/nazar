@@ -67,8 +67,9 @@ export async function getStocks(session: UserSession, symbols?: string[]): Promi
       const volumeRatio = volume / s.avgVolume30d;
 
       const openPrice = s.symbol === 'HDFCBANK' ? 1695.0 : s.symbol === 'RELIANCE' ? 2360.0 : yesterdayClose * 1.002;
-      const dayHigh = Math.max(currentPrice, openPrice, s.high30d * 0.998);
-      const dayLow = Math.min(currentPrice, openPrice, yesterdayClose * 0.99);
+      // Only the open and current price are known for today, so the range is bounded by them.
+      const dayHigh = Math.max(currentPrice, openPrice);
+      const dayLow = Math.min(currentPrice, openPrice);
 
       const previousPrice = session.stockSnapshots[s.symbol]?.price ?? yesterdayClose;
       const priceDiff = currentPrice - previousPrice;
