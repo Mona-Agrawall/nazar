@@ -1,12 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import { motion, useInView } from 'motion/react';
 import { ArrowUpRight, ArrowDownRight, Clock, CheckCircle, ChevronRight, AlertCircle, HelpCircle } from 'lucide-react';
-import { MarketPulse, Stock } from '../types';
+import { MarketEvent, MarketPulse, Stock } from '../types';
 import { Sparkline } from './Sparkline';
 
 interface MarketPulseHeroProps {
   pulse: MarketPulse | null;
   stocks: Stock[];
+  events: MarketEvent[];
   onSelectStock: (symbol: string) => void;
   onAcknowledgeEvent: (eventId: string) => void;
   onOpenTimeTravel: () => void;
@@ -45,7 +46,8 @@ interface PulseItemProps {
   onSelect: () => void;
   onWhy: () => void;
   isAcknowledged: boolean;
-  onAck: (e: React.MouseEvent) => void;
+  /** Undefined when the stock has no timeline events to acknowledge. */
+  onAck?: (e: React.MouseEvent) => void;
   delay?: number;
 }
 
@@ -155,14 +157,16 @@ function PulseItem({ stock, rank, onSelect, onWhy, isAcknowledged, onAck, delay 
           </button>
 
           {/* Acknowledge */}
-          <button
-            onClick={onAck}
-            className={`p-1.5 rounded-full transition-colors ${isAcknowledged ? 'text-[var(--color-green)] bg-[var(--color-green-soft)]' : 'text-[var(--color-faint)] hover:text-[var(--color-ink)] hover:bg-[var(--color-panel)]'}`}
-            aria-label={isAcknowledged ? 'Acknowledged' : 'Acknowledge this change'}
-            title={isAcknowledged ? 'Acknowledged' : 'Mark as seen'}
-          >
-            <CheckCircle className="w-3.5 h-3.5" />
-          </button>
+          {onAck && (
+            <button
+              onClick={onAck}
+              className={`p-1.5 rounded-full transition-colors ${isAcknowledged ? 'text-[var(--color-green)] bg-[var(--color-green-soft)]' : 'text-[var(--color-faint)] hover:text-[var(--color-ink)] hover:bg-[var(--color-panel)]'}`}
+              aria-label={isAcknowledged ? 'Acknowledged' : 'Acknowledge this change'}
+              title={isAcknowledged ? 'Acknowledged' : 'Mark as seen'}
+            >
+              <CheckCircle className="w-3.5 h-3.5" />
+            </button>
+          )}
 
           {/* View detail */}
           <ChevronRight
@@ -181,7 +185,8 @@ interface FlagshipCardProps {
   onSelect: () => void;
   onWhy: () => void;
   isAcknowledged: boolean;
-  onAck: (e: React.MouseEvent) => void;
+  /** Undefined when the stock has no timeline events to acknowledge. */
+  onAck?: (e: React.MouseEvent) => void;
 }
 
 function FlagshipCard({ stock, onSelect, onWhy, isAcknowledged, onAck }: FlagshipCardProps) {
@@ -309,13 +314,15 @@ function FlagshipCard({ stock, onSelect, onWhy, isAcknowledged, onAck }: Flagshi
               Why?
             </button>
 
-            <button
-              onClick={onAck}
-              className={`p-1.5 rounded-full transition-colors ${isAcknowledged ? 'text-[var(--color-green)] bg-[var(--color-green-soft)]' : 'text-[var(--color-faint)] hover:text-[var(--color-ink)] hover:bg-[var(--color-panel)]'}`}
-              aria-label={isAcknowledged ? 'Acknowledged' : 'Acknowledge this change'}
-            >
-              <CheckCircle className="w-4 h-4" />
-            </button>
+            {onAck && (
+              <button
+                onClick={onAck}
+                className={`p-1.5 rounded-full transition-colors ${isAcknowledged ? 'text-[var(--color-green)] bg-[var(--color-green-soft)]' : 'text-[var(--color-faint)] hover:text-[var(--color-ink)] hover:bg-[var(--color-panel)]'}`}
+                aria-label={isAcknowledged ? 'Acknowledged' : 'Acknowledge this change'}
+              >
+                <CheckCircle className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -327,6 +334,7 @@ function FlagshipCard({ stock, onSelect, onWhy, isAcknowledged, onAck }: Flagshi
 export const MarketPulseHero: React.FC<MarketPulseHeroProps> = ({
   pulse,
   stocks,
+  events,
   onSelectStock,
   onAcknowledgeEvent,
   onOpenTimeTravel,
@@ -334,8 +342,6 @@ export const MarketPulseHero: React.FC<MarketPulseHeroProps> = ({
   onToggleFilterImportant,
   onOpenWhyModal,
 }) => {
-  const [acknowledgedIds, setAcknowledgedIds] = useState<Set<string>>(new Set());
-
   if (!pulse) return <PulseSkeleton />;
 
   const keyStocks = [...stocks].sort((a, b) => b.attentionScore - a.attentionScore);
@@ -356,11 +362,21 @@ export const MarketPulseHero: React.FC<MarketPulseHeroProps> = ({
 
   const volatilitySymbol = stocks.find((s) => s.changePercent24h < -1.5 || s.volumeRatio >= 2)?.symbol || 'HDFCBANK';
 
-  function handleAck(id: string, e: React.MouseEvent) {
-    e.stopPropagation();
-    setAcknowledgedIds((prev) => new Set([...prev, id]));
-    onAcknowledgeEvent(id);
-  }
+  // Cards represent stocks; acknowledging a card acknowledges that stock's timeline events.
+  const eventsFor = (symbol: string) => events.filter((ev) => ev.stockSymbol === symbol && !ev.dismissed);
+  const isAcknowledged = (symbol: string) => {
+    const stockEvents = eventsFor(symbol);
+    return stockEvents.length > 0 && stockEvents.every((ev) => ev.acknowledged);
+  };
+  const ackHandler = (symbol: string) => {
+    if (eventsFor(symbol).length === 0) return undefined;
+    return (e: React.MouseEvent) => {
+      e.stopPropagation();
+      eventsFor(symbol)
+        .filter((ev) => !ev.acknowledged)
+        .forEach((ev) => onAcknowledgeEvent(ev.id));
+    };
+  };
 
   return (
     <section className="relative w-full pt-8 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -456,8 +472,8 @@ export const MarketPulseHero: React.FC<MarketPulseHeroProps> = ({
           stock={flagshipStock}
           onSelect={() => onSelectStock(flagshipStock.symbol)}
           onWhy={() => onOpenWhyModal(flagshipStock)}
-          isAcknowledged={acknowledgedIds.has(flagshipStock.symbol)}
-          onAck={(e) => handleAck(flagshipStock.symbol, e)}
+          isAcknowledged={isAcknowledged(flagshipStock.symbol)}
+          onAck={ackHandler(flagshipStock.symbol)}
         />
       )}
 
@@ -471,8 +487,8 @@ export const MarketPulseHero: React.FC<MarketPulseHeroProps> = ({
                 rank={idx + 2}
                 onSelect={() => onSelectStock(stock.symbol)}
                 onWhy={() => onOpenWhyModal(stock)}
-                isAcknowledged={acknowledgedIds.has(stock.symbol)}
-                onAck={(e) => handleAck(stock.symbol, e)}
+                isAcknowledged={isAcknowledged(stock.symbol)}
+                onAck={ackHandler(stock.symbol)}
                 delay={0.08 * (idx + 1)}
               />
             </div>

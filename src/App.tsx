@@ -240,6 +240,7 @@ function Dashboard() {
               <MarketPulseHero
                 pulse={pulse}
                 stocks={stocks}
+                events={events}
                 onSelectStock={setSelectedStockSymbol}
                 onAcknowledgeEvent={handleAcknowledgeEvent}
                 onOpenTimeTravel={() => setIsTimeTravelOpen(true)}
