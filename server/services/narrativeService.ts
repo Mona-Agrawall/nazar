@@ -6,7 +6,19 @@ const GEMINI_CACHE_MS = 2 * 60 * 1000;
 // Fallbacks are cached briefly so the app switches to Gemini soon after it recovers.
 const FALLBACK_CACHE_MS = 30 * 1000;
 
+// Keyed by every input the text depends on, so sessions with different baselines or away times
+// never see each other's narrative, while identical inputs still share one Gemini call.
 const narrativeCache = new Map<string, { text: string; expiresAt: number }>();
+const MAX_CACHE_ENTRIES = 500;
+
+function cacheNarrative(key: string, text: string, expiresAt: number) {
+  if (narrativeCache.size >= MAX_CACHE_ENTRIES) {
+    const now = Date.now();
+    for (const [k, v] of narrativeCache) if (v.expiresAt <= now) narrativeCache.delete(k);
+    if (narrativeCache.size >= MAX_CACHE_ENTRIES) narrativeCache.delete(narrativeCache.keys().next().value as string);
+  }
+  narrativeCache.set(key, { text, expiresAt });
+}
 let geminiClient: GoogleGenAI | null = null;
 
 function getGeminiClient(): GoogleGenAI {
@@ -37,7 +49,8 @@ export async function buildStockNarrative(input: NarrativeInput): Promise<string
   const sign = pct >= 0 ? '+' : '';
 
   const now = Date.now();
-  const cached = narrativeCache.get(symbol);
+  const cacheKey = [symbol, previousPrice, currentPrice, volumeRatio, input.awayDurationStr, attentionLevel].join('|');
+  const cached = narrativeCache.get(cacheKey);
   if (cached && cached.expiresAt > now) return cached.text;
 
   const useGemini = process.env.GEMINI_API_KEY && attentionLevel === 'high' && process.env.GEMINI_ENABLED !== 'false';
@@ -61,7 +74,7 @@ export async function buildStockNarrative(input: NarrativeInput): Promise<string
 
       const response = await getGeminiClient().models.generateContent({ model: GEMINI_MODEL, contents: prompt });
       if (response.text) {
-        narrativeCache.set(symbol, { text: response.text, expiresAt: now + GEMINI_CACHE_MS });
+        cacheNarrative(cacheKey, response.text, now + GEMINI_CACHE_MS);
         return response.text;
       }
     } catch (e: any) {
@@ -73,7 +86,7 @@ export async function buildStockNarrative(input: NarrativeInput): Promise<string
 
   const fallbackText = describeChange(input, pct);
 
-  narrativeCache.set(symbol, { text: fallbackText, expiresAt: now + FALLBACK_CACHE_MS });
+  cacheNarrative(cacheKey, fallbackText, now + FALLBACK_CACHE_MS);
   return fallbackText;
 }
 
