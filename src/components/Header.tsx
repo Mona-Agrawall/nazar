@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Search, RotateCcw, CheckCircle2, ChevronDown, LogOut, User as UserIcon } from 'lucide-react';
 import { AppTab, FeedStatus } from '../types';
 import { auth } from '../lib/auth';
+import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
   activeTab: AppTab;
@@ -27,8 +28,13 @@ export const Header: React.FC<HeaderProps> = ({
   isSyncing,
 }) => {
   const [showFeedPopover, setShowFeedPopover] = useState(false);
+  const { user, canExitDemo, setDemoMode } = useAuth();
 
   const handleSignOut = async () => {
+    if (canExitDemo) {
+      setDemoMode(false);
+      return;
+    }
     try {
       await auth.signOut();
     } catch (error) {
@@ -166,16 +172,24 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* User Profile / Auth Actions */}
           <div className="flex items-center gap-3 pl-4 ml-2 border-l border-[var(--color-border-soft)]">
-            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-[var(--color-panel)] border border-[var(--color-border-soft)] shadow-sm">
+            <div
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-[var(--color-panel)] border border-[var(--color-border-soft)] shadow-sm"
+              title={user?.email ?? 'Demo mode'}
+              aria-label={user?.email ? `Signed in as ${user.email}` : 'Demo mode'}
+            >
               <UserIcon className="w-4 h-4 text-[var(--color-ink-soft)]" />
             </div>
-            <button
-              onClick={handleSignOut}
-              title="Sign Out"
-              className="p-1.5 rounded-full hover:bg-[var(--color-red-soft)] text-[var(--color-faint)] hover:text-[var(--color-red)] transition-colors"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
+            {/* Signed-in users sign out; "Skip for now" users can return to sign-in; forced demo mode has neither */}
+            {(user || canExitDemo) && (
+              <button
+                onClick={handleSignOut}
+                title={user ? 'Sign Out' : 'Exit demo'}
+                aria-label={user ? 'Sign out' : 'Exit demo mode and return to sign-in'}
+                className="p-1.5 rounded-full hover:bg-[var(--color-red-soft)] text-[var(--color-faint)] hover:text-[var(--color-red)] transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </div>
