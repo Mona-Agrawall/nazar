@@ -46,15 +46,18 @@ export const supabaseRepository = {
   },
 
   /**
-   * Fetch all watchlists for a user.
+   * Fetch all watchlists for a user. `ensureDefault` creates the default watchlist on first use;
+   * callers that only read (polling, edits) skip that extra RPC.
    */
-  async getWatchlists(token: string) {
+  async getWatchlists(token: string, { ensureDefault = true }: { ensureDefault?: boolean } = {}) {
     const db = createUserClient(token);
 
-    // Attempt to init default watchlist — may fail if the user profile doesn't exist yet (expected in demo mode)
-    const { error: initError } = await db.rpc('ensure_default_watchlist');
-    if (initError && !initError.message.includes('foreign key')) {
-      console.warn('[Supabase] ensure_default_watchlist:', initError.message);
+    if (ensureDefault) {
+      // Attempt to init default watchlist — may fail if the user profile doesn't exist yet (expected in demo mode)
+      const { error: initError } = await db.rpc('ensure_default_watchlist');
+      if (initError && !initError.message.includes('foreign key')) {
+        console.warn('[Supabase] ensure_default_watchlist:', initError.message);
+      }
     }
 
     // Fetch watchlists
@@ -148,7 +151,7 @@ export const supabaseRepository = {
     }
 
     // Return the updated shape by re-fetching
-    const { watchlists } = await this.getWatchlists(token);
+    const { watchlists } = await this.getWatchlists(token, { ensureDefault: false });
     return watchlists.find((w) => w.id === watchlistId);
   },
 
@@ -172,7 +175,7 @@ export const supabaseRepository = {
     const { data: profile } = await db.from('profiles').select('active_watchlist_id').single();
     if (profile?.active_watchlist_id) return profile.active_watchlist_id as string;
 
-    const { watchlists } = await this.getWatchlists(token);
+    const { watchlists } = await this.getWatchlists(token, { ensureDefault: false });
     const newActiveId = watchlists[0]?.id || null;
     const {
       data: { user },

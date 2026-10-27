@@ -65,34 +65,38 @@ function Dashboard() {
   const isLatestLoad = (generation: number) => generation === loadGenerationRef.current;
 
   // ── Load market data ──────────────────────────────────────────────────────
+  // Indices, feed status and the stock universe don't change between polls, so they are only fetched
+  // when `includeStatic` is set (initial load); polls fetch just the watchlist-dependent data.
   const loadMarketData = useCallback(
-    async (watchlistId?: string) => {
+    async (watchlistId?: string, { includeStatic = false }: { includeStatic?: boolean } = {}) => {
       const generation = startLoad();
       try {
-        const [wlData, idxData, statusData] = await Promise.all([
-          api.getWatchlists(),
-          api.getIndices(),
-          api.getFeedStatus(),
-        ]);
+        if (includeStatic) {
+          const [idxData, statusData, allData] = await Promise.all([
+            api.getIndices(),
+            api.getFeedStatus(),
+            api.getAllStocks(),
+          ]);
+          setIndices(idxData);
+          setFeedStatus(statusData);
+          setAllAvailableStocks(allData);
+        }
+
+        const wlData = await api.getWatchlists();
         if (!isLatestLoad(generation)) return;
 
         applyWatchlists(wlData.watchlists);
-        setIndices(idxData);
-        setFeedStatus(statusData);
-
         const targetWlId = watchlistId || wlData.activeId || wlData.watchlists[0]?.id;
         setActiveWatchlistId(targetWlId);
 
-        const [stockData, allData, pulseData, eventData] = await Promise.all([
+        const [stockData, pulseData, eventData] = await Promise.all([
           api.getStocks(targetWlId),
-          api.getAllStocks(),
           api.getPulse(targetWlId),
           api.getEvents(targetWlId),
         ]);
         if (!isLatestLoad(generation)) return;
 
         setStocks(stockData.stocks);
-        setAllAvailableStocks(allData);
         setPulse(pulseData);
         setEvents(eventData);
       } catch (err) {
@@ -105,14 +109,14 @@ function Dashboard() {
   // ── Initial load (seeds the demo scenario on a tab's first visit) ────────
   useEffect(() => {
     if (sessionStorage.getItem(DEMO_INITIALIZED_KEY)) {
-      loadMarketData();
+      loadMarketData(undefined, { includeStatic: true });
       return;
     }
     api
       .resetDemo()
       .then(() => sessionStorage.setItem(DEMO_INITIALIZED_KEY, 'true'))
       .catch((err) => console.error('[Nazar] Failed to reset demo scenario', err))
-      .finally(() => loadMarketData());
+      .finally(() => loadMarketData(undefined, { includeStatic: true }));
   }, [loadMarketData]);
 
   // ── Polling refresh ───────────────────────────────────────────────────────

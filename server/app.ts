@@ -57,7 +57,7 @@ function sessionFor(req: Request): UserSession {
 async function resolveWatchlist(req: AuthenticatedRequest, session: UserSession): Promise<Watchlist | undefined> {
   const requestedId = queryString(req.query.watchlistId, 64);
   if (req.token) {
-    const { watchlists, activeId } = await supabaseRepository.getWatchlists(req.token);
+    const { watchlists, activeId } = await supabaseRepository.getWatchlists(req.token, { ensureDefault: false });
     return watchlists.find((w) => w.id === (requestedId || activeId)) || watchlists[0];
   }
   return session.watchlists.find((w) => w.id === (requestedId || session.activeWatchlistId)) || session.watchlists[0];
