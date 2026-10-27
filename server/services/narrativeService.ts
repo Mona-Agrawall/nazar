@@ -1,6 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
 import { AttentionFactor } from '../../src/types.js';
-import { EXPLANATIONS } from '../data/demoScenario.js';
 
 const GEMINI_MODEL = 'gemini-3.6-flash';
 const GEMINI_CACHE_MS = 2 * 60 * 1000;
@@ -32,7 +31,7 @@ export interface NarrativeInput {
  * (to save quota); every other case gets a deterministic narrative.
  */
 export async function buildStockNarrative(input: NarrativeInput): Promise<string> {
-  const { symbol, currentPrice, previousPrice, volumeRatio, high30d, awayDurationStr, attentionLevel, factors } = input;
+  const { symbol, currentPrice, previousPrice, volumeRatio, attentionLevel, factors } = input;
   const diff = currentPrice - previousPrice;
   const pct = (diff / previousPrice) * 100;
   const sign = pct >= 0 ? '+' : '';
@@ -72,25 +71,31 @@ export async function buildStockNarrative(input: NarrativeInput): Promise<string
     }
   }
 
-  let fallbackText: string;
-  if (symbol === 'RELIANCE') {
-    fallbackText = `Since your last visit (${awayDurationStr} ago), RELIANCE gained 3.8%, traded at 2.4× its normal volume, and is within 0.6% of testing its 30-day high. Institutional block trades detected.`;
-  } else if (symbol === 'TCS') {
-    fallbackText = `Since your last visit, TCS crossed its 30-day resistance of ₹${high30d.toLocaleString('en-IN')}, registering +1.9% with sustained buyer accumulation across European session hours.`;
-  } else if (symbol === 'HDFCBANK') {
-    fallbackText = `Since your last visit, HDFCBANK opened higher (+0.5%) but suffered sharp institutional selling pressure, dropping 2.7% intraday on elevated options block activity.`;
-  } else if (symbol === 'INFY') {
-    fallbackText = `INFY consolidated tightly within a 0.5% corridor, absorbing mild profit taking while maintaining its 20-day moving average.`;
-  } else if (symbol === 'TATAMOTORS') {
-    fallbackText = `Tata Motors gained +2.6% on strong monthly EV dispatch volumes and commercial vehicle order book expansion.`;
-  } else if (Math.abs(pct) >= 2) {
-    fallbackText = `Since you last looked, ${symbol} moved ${sign}${pct.toFixed(1)}% (₹${diff > 0 ? '+' : ''}${diff.toFixed(1)}) with ${volumeRatio.toFixed(1)}× standard turnover.`;
-  } else {
-    fallbackText = `${symbol} held steady at ₹${currentPrice.toLocaleString('en-IN')} (${sign}${pct.toFixed(2)}%), experiencing orderly trading within historical range.`;
-  }
+  const fallbackText = describeChange(input, pct);
 
   narrativeCache.set(symbol, { text: fallbackText, expiresAt: now + FALLBACK_CACHE_MS });
   return fallbackText;
+}
+
+/** Deterministic narrative built only from the computed numbers and attention factors. */
+function describeChange(input: NarrativeInput, pct: number): string {
+  const { symbol, currentPrice, volumeRatio, high30d, awayDurationStr, factors } = input;
+  const price = currentPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const since = awayDurationStr === '0s' ? 'Since you last checked' : `Since your last visit (${awayDurationStr} ago)`;
+
+  if (Math.abs(pct) < 0.05) {
+    return `${since}, ${symbol} is essentially unchanged at ${price}.`;
+  }
+
+  const details: string[] = [];
+  if (volumeRatio >= 1.4) details.push(`on ${volumeRatio.toFixed(1)}× its normal volume`);
+  const has = (id: string) => factors.some((f) => f.id === id);
+  if (has('breakout_high')) details.push(`trading above its 30-day high of ${high30d.toLocaleString('en-IN')}`);
+  else if (has('near_high')) details.push(`within 1.5% of its 30-day high`);
+  if (has('gap_reversal')) details.push(`after reversing from a higher open`);
+
+  const move = `${pct > 0 ? 'rose' : 'fell'} ${Math.abs(pct).toFixed(1)}% to ${price}`;
+  return `${since}, ${symbol} ${move}${details.length ? ', ' + details.join(', ') : ''}.`;
 }
 
 export interface ExplanationFacts {
@@ -102,7 +107,15 @@ export interface ExplanationFacts {
 
 /** One-sentence "why it matters" text shown in the stock modals. */
 export function buildExplanation(facts: ExplanationFacts): string {
-  if (EXPLANATIONS[facts.symbol]) return EXPLANATIONS[facts.symbol];
-  const sign = facts.priceChangePct !== undefined && facts.priceChangePct >= 0 ? '+' : '';
-  return `${facts.symbol} moved ${sign}${facts.priceChangePct?.toFixed(1) ?? '0.0'}% with ${facts.volumeMultiple?.toFixed(1) ?? '1.0'}× its normal volume since your last visit ${facts.timeSinceLastSeen} ago.`;
+  const pct = Number(facts.priceChangePct) || 0;
+  const volume = Number(facts.volumeMultiple) || 1;
+  const since =
+    facts.timeSinceLastSeen && facts.timeSinceLastSeen !== '0s'
+      ? `since your last visit ${facts.timeSinceLastSeen} ago`
+      : 'since you last checked';
+  if (Math.abs(pct) < 0.05) {
+    return `${facts.symbol} is essentially unchanged ${since}, trading at ${volume.toFixed(1)}× its normal volume.`;
+  }
+  const sign = pct >= 0 ? '+' : '';
+  return `${facts.symbol} moved ${sign}${pct.toFixed(1)}% with ${volume.toFixed(1)}× its normal volume ${since}.`;
 }
