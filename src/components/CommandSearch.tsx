@@ -4,6 +4,8 @@ import { Search, Plus, Check, X } from 'lucide-react';
 import { Stock } from '../types';
 import { api } from '../services/api';
 
+const SEARCH_DEBOUNCE_MS = 200;
+
 interface CommandSearchProps {
   isOpen: boolean;
   onClose: () => void;
@@ -23,16 +25,38 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
   const [results, setResults] = useState<Stock[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const latestRequestRef = useRef(0);
 
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 50);
-      api.searchStocks('').then(setResults);
     } else {
       setQuery('');
       setSelectedIndex(0);
     }
   }, [isOpen]);
+
+  // Debounced search: only the most recent request may update the results.
+  useEffect(() => {
+    if (!isOpen) return;
+    const requestId = ++latestRequestRef.current;
+    const timer = setTimeout(
+      () => {
+        api.searchStocks(query).then(
+          (res) => {
+            if (requestId === latestRequestRef.current) setResults(res);
+          },
+          (err) => {
+            if (requestId !== latestRequestRef.current) return;
+            console.error('[Nazar] Search failed', err);
+            setResults([]);
+          },
+        );
+      },
+      query ? SEARCH_DEBOUNCE_MS : 0,
+    );
+    return () => clearTimeout(timer);
+  }, [query, isOpen]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -64,11 +88,9 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, results, selectedIndex, onClose, onSelectStock]);
 
-  const handleSearch = async (val: string) => {
+  const handleSearch = (val: string) => {
     setQuery(val);
     setSelectedIndex(0);
-    const res = await api.searchStocks(val);
-    setResults(res);
   };
 
   if (!isOpen) return null;
