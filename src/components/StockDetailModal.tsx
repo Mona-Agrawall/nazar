@@ -24,6 +24,15 @@ interface StockDetailModalProps {
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '1Y', 'ALL'];
 
+/** Hover label: time of day for 1D, day + time for 1W, a date for longer ranges. */
+function formatPointTime(timestamp: number, timeframe: Timeframe): string {
+  const date = new Date(timestamp);
+  if (timeframe === '1D') return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  if (timeframe === '1W')
+    return date.toLocaleString('en-IN', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onClose, onOpenWhyModal }) => {
   const [stockDetail, setStockDetail] = useState<StockDetailExtended | null>(null);
   const [loading, setLoading] = useState(true);
@@ -295,7 +304,11 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
                   <div className="text-xs text-[var(--color-muted)] font-mono mt-0.5">
                     {hoveredPoint ? (
                       <span>
-                        Time: <strong className="text-[var(--color-ink)]">{hoveredPoint.time}</strong> · Vol:{' '}
+                        {timeframe === '1D' ? 'Time' : 'Date'}:{' '}
+                        <strong className="text-[var(--color-ink)]">
+                          {formatPointTime(hoveredPoint.timestamp, timeframe)}
+                        </strong>{' '}
+                        · Vol:{' '}
                         <strong className="text-[var(--color-ink)]">
                           {(hoveredPoint.volume / 1_000_000).toFixed(2)}M
                         </strong>

@@ -119,7 +119,8 @@ export interface MarketPulse {
 }
 
 export interface PricePoint {
-  time: string;
+  /** Epoch milliseconds; formatted on the client for the selected timeframe. */
+  timestamp: number;
   price: number;
   volume: number;
 }

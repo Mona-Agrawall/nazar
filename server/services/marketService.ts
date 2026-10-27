@@ -35,7 +35,7 @@ function generateSparkline(start: number, end: number, points = 24, volatility =
 
 function toPricePoints(history: HistoricalData): PricePoint[] {
   return history.data.map((d) => ({
-    time: new Date(d.datetime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    timestamp: new Date(d.datetime).getTime(),
     price: d.close,
     volume: d.volume,
   }));
