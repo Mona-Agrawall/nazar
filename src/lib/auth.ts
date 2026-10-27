@@ -78,10 +78,15 @@ export const auth = {
    * Formats raw Supabase errors into user-friendly messages.
    */
   formatError(error: any): AuthError {
-    let message = 'An unexpected error occurred. Please try again.';
+    // Unrecognised errors keep Supabase's own message rather than a generic one.
+    let message = error?.message || 'An unexpected error occurred. Please try again.';
     const code = error.code || error.status?.toString();
 
-    if (error.message?.toLowerCase().includes('invalid login credentials')) {
+    if (error.status === 429 || error.message?.toLowerCase().includes('rate limit')) {
+      message = 'Too many attempts. Please wait a minute and try again.';
+    } else if (error.message?.toLowerCase().includes('email not confirmed')) {
+      message = 'Please confirm your email address first — check your inbox for the link.';
+    } else if (error.message?.toLowerCase().includes('invalid login credentials')) {
       message = 'Invalid email or password. Please try again.';
     } else if (error.message?.toLowerCase().includes('already registered')) {
       message = 'An account with this email already exists.';
