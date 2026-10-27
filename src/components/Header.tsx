@@ -118,7 +118,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <div className="w-2 h-2 rounded-full bg-[var(--color-green)] shadow-[0_0_8px_var(--color-green-soft)] shrink-0" />
               <span className="text-[9px] sm:text-[10px] uppercase text-[var(--color-ink-soft)] font-semibold font-mono whitespace-nowrap">
-                {feedStatus?.mode === 'LIVE' ? 'Market Open' : 'Delayed 15m'}
+                {feedStatus?.label ?? 'Market data'}
               </span>
               <ChevronDown className="w-3 h-3 text-[var(--color-faint)] shrink-0" />
             </button>
@@ -128,11 +128,11 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] pb-2">
                   <span className="font-semibold text-[var(--color-ink)] ">Market Feed Status</span>
                   <span className="px-2 py-0.5 rounded bg-[var(--color-green-soft)] text-[var(--color-green)] text-[10px] font-mono uppercase ">
-                    {feedStatus?.mode || 'DELAYED'}
+                    {feedStatus?.mode || 'UNKNOWN'}
                   </span>
                 </div>
                 <p className="text-[var(--color-muted)] leading-relaxed text-[11px]">
-                  {feedStatus?.detail || 'Market ticks calculated against NSE/BSE delayed market books.'}
+                  {feedStatus?.detail || 'Feed status unavailable.'}
                 </p>
                 <div className="flex items-center justify-between text-[10px] text-[var(--color-faint)] pt-1 font-mono">
                   <span>Last Engine Tick</span>

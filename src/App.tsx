@@ -408,9 +408,7 @@ function Dashboard() {
             </span>
           </div>
           <div className="flex items-center gap-4 text-[10px] uppercase font-mono">
-            <span>Deterministic Mock Feed</span>
-            <span className="text-[var(--color-border)]">·</span>
-            <span>NSE / BSE Delayed</span>
+            <span>Simulated demo data · not real prices</span>
             <span className="text-[var(--color-border)]">·</span>
             <button
               onClick={() => setIsTimeTravelOpen(true)}

@@ -222,13 +222,14 @@ export async function searchStocks(query: string): Promise<Stock[]> {
   return getStocks(searchSession, symbols);
 }
 
+/** Prices always come from the built-in dataset; only symbol search can use a live provider. */
 export function getFeedStatus(): FeedStatus {
   return {
-    mode: isLiveProvider ? 'LIVE' : 'DELAYED',
-    label: isLiveProvider ? 'Market data · Live' : 'Market data · Delayed 15 min',
+    mode: 'SIMULATED',
+    label: 'Simulated data',
     detail: isLiveProvider
-      ? 'Real-time data stream active via Twelve Data API.'
-      : 'Synchronized with NSE/BSE delayed feed. Attention engine updating every 15s.',
+      ? 'Prices are a built-in demo dataset and do not update. Symbol search uses the Twelve Data API.'
+      : 'Prices are a built-in demo dataset and do not update. Not real market data.',
     lastUpdated: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
   };
 }
