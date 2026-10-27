@@ -589,7 +589,10 @@ All tables have RLS enabled. Policies enforce that users can only read and chang
 │
 ├── supabase/migrations/
 │   ├── 20260905000001_create_profiles.sql    # profiles table, RLS, sign-up trigger
-│   └── 20260905000002_create_watchlists.sql  # stocks / watchlists / items, RLS, RPCs
+│   ├── 20260905000002_create_watchlists.sql  # stocks / watchlists / items, RLS, RPCs
+│   ├── 20261027000001_one_default_watchlist_per_user.sql      # race-safe default watchlist
+│   ├── 20261027000002_server_controlled_default_watchlist.sql # clients cannot set is_default
+│   └── 20261027000003_active_watchlist_ownership.sql          # active watchlist must be your own
 │
 ├── public/                            # Logo and favicon
 ├── index.html                         # HTML entry; Google Fonts (Roboto)
@@ -620,12 +623,15 @@ cp .env.example .env
 
 Fill in `.env` with your Supabase **Project URL**, **publishable (anon) key** and **secret (service_role) key** from *Project Settings → API*. Set `VITE_DEMO_MODE=true` if you want to use the app without signing in.
 
-In the Supabase **SQL Editor**, run the two migration files in order:
+In the Supabase **SQL Editor**, run the migration files in order:
 
 1. `supabase/migrations/20260905000001_create_profiles.sql`
 2. `supabase/migrations/20260905000002_create_watchlists.sql`
+3. `supabase/migrations/20261027000001_one_default_watchlist_per_user.sql`
+4. `supabase/migrations/20261027000002_server_controlled_default_watchlist.sql`
+5. `supabase/migrations/20261027000003_active_watchlist_ownership.sql`
 
-Both scripts are idempotent, so re-running them is safe.
+All scripts are idempotent, so re-running them is safe.
 
 ```bash
 npm run dev
@@ -649,7 +655,9 @@ Use **Skip for now** to enter demo mode without an account. Use **Simulate** (he
 | `npm run dev` | Development server with hot reload on port 3000 |
 | `npm run build` | Builds the frontend into `dist/` and the server into `dist-server/server.cjs` |
 | `npm start` | Runs the production build |
-| `npm run typecheck` | TypeScript check (also flags unused code) |
+| `npm run typecheck` | TypeScript check (strict mode; also flags unused code) |
+| `npm run lint` | ESLint (TypeScript + React hooks rules) |
+| `npm test` | Regression tests (Node test runner via tsx) |
 | `npm run format` | Formats the code with Prettier |
 
 ### Optional Settings
