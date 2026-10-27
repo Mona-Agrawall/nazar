@@ -358,9 +358,9 @@ export const MarketPulseHero: React.FC<MarketPulseHeroProps> = ({
       .filter((s) => s.attentionScore >= 70)
       .slice(0, 2)
       .map((s) => s.symbol)
-      .join(', ') || 'RELIANCE, TCS';
+      .join(', ') || 'None';
 
-  const volatilitySymbol = stocks.find((s) => s.changePercent24h < -1.5 || s.volumeRatio >= 2)?.symbol || 'HDFCBANK';
+  const volatilitySymbol = stocks.find((s) => s.changePercent24h < -1.5 || s.volumeRatio >= 2)?.symbol || 'None';
 
   // Cards represent stocks; acknowledging a card acknowledges that stock's timeline events.
   const eventsFor = (symbol: string) => events.filter((ev) => ev.stockSymbol === symbol && !ev.dismissed);
@@ -434,7 +434,11 @@ export const MarketPulseHero: React.FC<MarketPulseHeroProps> = ({
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-[10px] uppercase text-[var(--color-faint)]">Volatility</span>
-            <span className="text-xl sm:text-2xl font-semibold text-[var(--color-red)] ">{volatilitySymbol}</span>
+            <span
+              className={`text-xl sm:text-2xl font-semibold ${volatilitySymbol === 'None' ? 'text-[var(--color-muted)]' : 'text-[var(--color-red)]'}`}
+            >
+              {volatilitySymbol}
+            </span>
           </div>
         </div>
       </header>
