@@ -17,6 +17,7 @@ import { StockDetailExtended, Timeframe, PricePoint } from '../types';
 import { api } from '../services/api';
 import { currencySymbol } from '../lib/currency';
 import { useEscapeKey } from '../lib/useEscapeKey';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
 interface StockDetailModalProps {
   symbol: string | null;
@@ -47,6 +48,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEscapeKey(onClose);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, !!symbol);
 
   // Load stock detail, then its explanation
   useEffect(() => {
@@ -145,6 +148,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
         exit={{ opacity: 0, scale: 0.97, y: 12 }}
         transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
         className="relative w-full max-w-4xl rounded-2xl glass-panel shadow-[0_24px_64px_rgba(0,0,0,0.06)] text-[var(--color-ink)] overflow-hidden my-auto"
+        ref={panelRef}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Header ──────────────────────────────────────────────────────── */}

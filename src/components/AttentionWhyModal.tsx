@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -15,6 +15,7 @@ import { Stock, AttentionFactor } from '../types';
 import { api } from '../services/api';
 import { currencySymbol } from '../lib/currency';
 import { useEscapeKey } from '../lib/useEscapeKey';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
 interface AttentionWhyModalProps {
   stock: Stock | null;
@@ -44,6 +45,8 @@ export const AttentionWhyModal: React.FC<AttentionWhyModalProps> = ({ stock, onC
   const [isExplanationLoading, setIsExplanationLoading] = useState(false);
 
   useEscapeKey(onClose, !!stock);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, !!stock);
 
   // Fetch the explanation whenever a different stock opens
   useEffect(() => {
@@ -80,6 +83,8 @@ export const AttentionWhyModal: React.FC<AttentionWhyModalProps> = ({ stock, onC
           exit={{ opacity: 0, scale: 0.96, y: 12 }}
           transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
           className="relative w-full max-w-lg rounded-2xl glass-panel shadow-[0_24px_64px_rgba(0,0,0,0.06)] text-[var(--color-ink)] overflow-hidden"
+          ref={panelRef}
+          tabIndex={-1}
           onClick={(e) => e.stopPropagation()}
         >
           {/* ── Header ─────────────────────────────────────────────────────── */}

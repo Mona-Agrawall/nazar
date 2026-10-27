@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, FolderPlus, Check } from 'lucide-react';
 import { Stock } from '../types';
 import { currencySymbol } from '../lib/currency';
 import { useEscapeKey } from '../lib/useEscapeKey';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
 const DEFAULT_SYMBOLS = ['RELIANCE', 'TCS'];
 const MAX_NAME_LENGTH = 50; // matches the server limit
@@ -32,6 +33,9 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
   };
 
   useEscapeKey(handleClose, isOpen);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  useFocusTrap(panelRef, isOpen, nameInputRef);
 
   if (!isOpen) return null;
 
@@ -61,6 +65,9 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
       <div
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--color-ink)]/10 backdrop-blur-md"
         onClick={handleClose}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Create watchlist"
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 8 }}
@@ -68,6 +75,8 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
           exit={{ opacity: 0, scale: 0.96, y: 8 }}
           transition={{ duration: 0.2 }}
           className="relative w-full max-w-md rounded-2xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-2xl p-6 text-[var(--color-ink)] overflow-hidden"
+          ref={panelRef}
+          tabIndex={-1}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-start justify-between pb-4 border-b border-[var(--color-border-soft)]">
@@ -106,13 +115,13 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
                 Ledger Title
               </label>
               <input
+                ref={nameInputRef}
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={MAX_NAME_LENGTH}
                 placeholder="e.g. Sovereign Bluechips, EV Supply Chain..."
                 className="w-full px-4 py-2.5 rounded-xl bg-[var(--color-panel)] border border-[var(--color-border)] text-sm text-[var(--color-ink)] placeholder-[var(--color-faint)] focus:outline-none focus:border-[var(--color-muted)] font-normal"
-                autoFocus
               />
             </div>
 

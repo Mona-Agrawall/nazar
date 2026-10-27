@@ -5,6 +5,7 @@ import { Stock } from '../types';
 import { api } from '../services/api';
 import { currencySymbol } from '../lib/currency';
 import { useEscapeKey } from '../lib/useEscapeKey';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
 const SEARCH_DEBOUNCE_MS = 200;
 
@@ -30,6 +31,8 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
   const latestRequestRef = useRef(0);
 
   useEscapeKey(onClose, isOpen);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, isOpen);
 
   useEffect(() => {
     if (isOpen) {
@@ -98,6 +101,9 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
       <div
         className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 px-4 bg-[var(--color-ink)]/10 backdrop-blur-md"
         onClick={onClose}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search stocks"
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: -8 }}
@@ -105,6 +111,8 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
           exit={{ opacity: 0, scale: 0.96, y: -8 }}
           transition={{ duration: 0.18 }}
           className="w-full max-w-xl rounded-2xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-2xl overflow-hidden"
+          ref={panelRef}
+          tabIndex={-1}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Search Input Bar */}

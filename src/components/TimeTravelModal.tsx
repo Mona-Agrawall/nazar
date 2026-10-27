@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Clock, X, Star } from 'lucide-react';
 import { useEscapeKey } from '../lib/useEscapeKey';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
 interface TimeTravelModalProps {
   isOpen: boolean;
@@ -19,6 +20,8 @@ export const TimeTravelModal: React.FC<TimeTravelModalProps> = ({
   const [loading, setLoading] = useState(false);
 
   useEscapeKey(onClose, isOpen);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, isOpen);
 
   if (!isOpen) return null;
 
@@ -86,6 +89,8 @@ export const TimeTravelModal: React.FC<TimeTravelModalProps> = ({
           exit={{ opacity: 0, scale: 0.96, y: 8 }}
           transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
           className="relative w-full max-w-lg rounded-2xl bg-[var(--color-background)] border border-[var(--color-border)] shadow-2xl p-6 text-[var(--color-ink)] overflow-hidden"
+          ref={panelRef}
+          tabIndex={-1}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
