@@ -96,10 +96,11 @@ function Dashboard() {
       loadMarketData();
       return;
     }
-    api.resetDemo().then(() => {
-      sessionStorage.setItem(DEMO_INITIALIZED_KEY, 'true');
-      loadMarketData();
-    });
+    api
+      .resetDemo()
+      .then(() => sessionStorage.setItem(DEMO_INITIALIZED_KEY, 'true'))
+      .catch((err) => console.error('[Nazar] Failed to reset demo scenario', err))
+      .finally(() => loadMarketData());
   }, [loadMarketData]);
 
   // ── Polling refresh ───────────────────────────────────────────────────────
@@ -129,14 +130,18 @@ function Dashboard() {
   // ── Watchlist ─────────────────────────────────────────────────────────────
   const handleSelectWatchlist = async (id: string) => {
     setActiveWatchlistId(id);
-    const [stockData, pulseData, eventData] = await Promise.all([
-      api.getStocks(id),
-      api.getPulse(id),
-      api.getEvents(id),
-    ]);
-    setStocks(stockData.stocks);
-    setPulse(pulseData);
-    setEvents(eventData);
+    try {
+      const [stockData, pulseData, eventData] = await Promise.all([
+        api.getStocks(id),
+        api.getPulse(id),
+        api.getEvents(id),
+      ]);
+      setStocks(stockData.stocks);
+      setPulse(pulseData);
+      setEvents(eventData);
+    } catch (err) {
+      console.error('[Nazar] Failed to load watchlist', err);
+    }
   };
 
   const setSymbols = (id: string, update: (symbols: string[]) => string[]) => {
@@ -197,18 +202,30 @@ function Dashboard() {
 
   // ── Events ────────────────────────────────────────────────────────────────
   const handleAcknowledgeEvent = async (id: string) => {
-    await api.acknowledgeEvent(id);
-    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, acknowledged: true } : e)));
+    try {
+      await api.acknowledgeEvent(id);
+      setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, acknowledged: true } : e)));
+    } catch (err) {
+      console.error('[Nazar] Failed to acknowledge event', err);
+    }
   };
 
   const handleDismissEvent = async (id: string) => {
-    await api.dismissEvent(id);
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+    try {
+      await api.dismissEvent(id);
+      setEvents((prev) => prev.filter((e) => e.id !== id));
+    } catch (err) {
+      console.error('[Nazar] Failed to dismiss event', err);
+    }
   };
 
   // ── Time Travel ───────────────────────────────────────────────────────────
   const handleTimeTravel = async (preset: string) => {
-    await api.timeTravel(preset);
+    try {
+      await api.timeTravel(preset);
+    } catch (err) {
+      console.error('[Nazar] Failed to simulate time away', err);
+    }
     await loadMarketData(activeWatchlistId);
   };
 
@@ -218,6 +235,8 @@ function Dashboard() {
     try {
       await api.syncSession();
       await loadMarketData(activeWatchlistId);
+    } catch (err) {
+      console.error('[Nazar] Failed to mark session as read', err);
     } finally {
       setIsSyncing(false);
     }
