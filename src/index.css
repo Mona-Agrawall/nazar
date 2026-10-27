@@ -8,19 +8,22 @@
     /* Numbers use the same typeface with tabular figures (see .font-mono below) */
     --font-mono: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 
-    /* Primary Semantic Colors */
-    --color-green: #04b488;
-    --color-green-hover: #04ad83;
+    /* Primary Semantic Colors.
+       Text colours meet WCAG AA (4.5:1) on white, the panel grey and their own soft tints;
+       white text on the green button is 4.99:1. */
+    --color-green: #037f60;
+    --color-green-hover: #036b51;
     --color-green-soft: #e9faf3;
-    --color-red: #ed5533;
+    --color-red: #c63211;
     --color-red-soft: #fae9e5;
-    --color-amber: #d9a400;
+    --color-amber: #886700;
 
     /* Typography & Ink */
     --color-ink: #44475b;
     --color-ink-soft: #696c7c;
-    --color-muted: #7c7e8c;
-    --color-faint: #a1a3ad;
+    /* Secondary text; the lightest greys that still reach 4.5:1 on white and the panel grey */
+    --color-muted: #6f707e;
+    --color-faint: #6f707e;
 
     /* Surfaces & Borders */
     --color-border: #e9e9eb;

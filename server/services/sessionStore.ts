@@ -80,46 +80,89 @@ export function getOrCreateSession(sessionId?: string | null): UserSession {
   return session;
 }
 
-function setAwayDuration(session: UserSession, awaySeconds: number) {
-  session.simulatedAwaySeconds = awaySeconds;
-  session.lastVisitTimestamp = Date.now() - awaySeconds * 1000;
+/**
+ * Where prices were when the user last checked, and when that was. Kept in the in-memory session in demo
+ * mode and in Supabase (user_visit_state) for signed-in users.
+ */
+export interface Baseline {
+  lastVisitTimestamp: number;
+  /** Last-seen price per symbol. */
+  prices: Record<string, number>;
 }
 
-/** Restores the canonical "7h 42m away" scenario: last-seen prices are yesterday's closes. */
-export function applyDemoScenario(session: UserSession) {
-  setAwayDuration(session, DEMO_AWAY_SECONDS);
-  session.dismissedEventIds.clear();
-  session.acknowledgedEventIds.clear();
-  BASE_STOCKS.forEach((s) => {
-    session.stockSnapshots[s.symbol] = { price: s.yesterdayClose, timestamp: session.lastVisitTimestamp };
-  });
+/** The canonical "away 7h 42m" demo baseline: last-seen prices are yesterday's closes. */
+export function demoBaseline(now = Date.now()): Baseline {
+  return {
+    lastVisitTimestamp: now - DEMO_AWAY_SECONDS * 1000,
+    prices: Object.fromEntries(BASE_STOCKS.map((s) => [s.symbol, s.yesterdayClose])),
+  };
 }
 
-/** Simulates the user having been away for a preset (or custom) duration. Returns the seconds applied. */
-export function applyTimeTravel(session: UserSession, preset?: string, awaySeconds?: unknown): number {
+/** A baseline as if the user had been away for a preset (or custom) duration. */
+export function timeTravelBaseline(
+  preset?: string,
+  awaySeconds?: unknown,
+  now = Date.now(),
+): { baseline: Baseline; awaySeconds: number } {
   let targetSeconds = DEMO_AWAY_SECONDS;
   const presetSeconds = preset ? TIME_TRAVEL_PRESETS.get(preset) : undefined;
   if (presetSeconds !== undefined) targetSeconds = presetSeconds;
   else if (typeof awaySeconds === 'number' && awaySeconds >= 0) targetSeconds = awaySeconds;
 
-  setAwayDuration(session, targetSeconds);
-
   // Rewind last-seen prices to before the demo moves happened (HDFCBANK was higher before its reversal).
   const factor = targetSeconds >= 24 * 3600 ? 0.93 : 0.97;
-  BASE_STOCKS.forEach((s) => {
-    const multiplier = s.symbol === 'HDFCBANK' ? 1.027 : factor;
-    session.stockSnapshots[s.symbol] = {
-      price: Number((s.yesterdayClose * multiplier).toFixed(2)),
-      timestamp: session.lastVisitTimestamp,
-    };
-  });
-  return targetSeconds;
+  const prices = Object.fromEntries(
+    BASE_STOCKS.map((s) => {
+      const multiplier = s.symbol === 'HDFCBANK' ? 1.027 : factor;
+      return [s.symbol, Number((s.yesterdayClose * multiplier).toFixed(2))];
+    }),
+  );
+  return { baseline: { lastVisitTimestamp: now - targetSeconds * 1000, prices }, awaySeconds: targetSeconds };
+}
+
+/** "Everything seen": current prices become the baseline. */
+export function currentBaseline(now = Date.now()): Baseline {
+  return { lastVisitTimestamp: now, prices: Object.fromEntries(BASE_STOCKS.map((s) => [s.symbol, s.basePrice])) };
+}
+
+/** The session fields derived from a baseline (away time is the real time since the last visit). */
+function baselineFields(baseline: Baseline, now = Date.now()) {
+  return {
+    lastVisitTimestamp: baseline.lastVisitTimestamp,
+    simulatedAwaySeconds: Math.max(0, Math.round((now - baseline.lastVisitTimestamp) / 1000)),
+    stockSnapshots: Object.fromEntries(
+      Object.entries(baseline.prices).map(([symbol, price]) => [
+        symbol,
+        { price, timestamp: baseline.lastVisitTimestamp },
+      ]),
+    ),
+  };
+}
+
+/** A copy of the session that uses the given baseline (event acknowledgements stay shared with the session). */
+export function withBaseline(session: UserSession, baseline: Baseline, now = Date.now()): UserSession {
+  return { ...session, ...baselineFields(baseline, now) };
+}
+
+function applyBaseline(session: UserSession, baseline: Baseline) {
+  Object.assign(session, baselineFields(baseline));
+}
+
+/** Restores the canonical "7h 42m away" scenario: last-seen prices are yesterday's closes. */
+export function applyDemoScenario(session: UserSession) {
+  applyBaseline(session, demoBaseline());
+  session.dismissedEventIds.clear();
+  session.acknowledgedEventIds.clear();
+}
+
+/** Simulates the user having been away for a preset (or custom) duration. Returns the seconds applied. */
+export function applyTimeTravel(session: UserSession, preset?: string, awaySeconds?: unknown): number {
+  const result = timeTravelBaseline(preset, awaySeconds);
+  applyBaseline(session, result.baseline);
+  return result.awaySeconds;
 }
 
 /** Marks everything as seen: current prices become the new baseline. */
 export function syncSession(session: UserSession) {
-  setAwayDuration(session, 0);
-  BASE_STOCKS.forEach((s) => {
-    session.stockSnapshots[s.symbol] = { price: s.basePrice, timestamp: Date.now() };
-  });
+  applyBaseline(session, currentBaseline());
 }

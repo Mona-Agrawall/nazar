@@ -19,12 +19,17 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
-// Each browser tab starts from the canonical "7h 42m away" demo scenario once.
+// In demo mode, each browser tab starts from the canonical "7h 42m away" demo scenario once.
 const DEMO_INITIALIZED_KEY = 'nazar_demo_initialized';
 const INTRO_SEEN_KEY = 'nazar_intro_seen';
 const REFRESH_INTERVAL_MS = 15_000;
+// Leaving the page only counts as a visit if it was visible this long, so a quick glance
+// at another tab does not reset the "what changed while you were away" briefing.
+const MIN_VISIBLE_MS_FOR_VISIT = 10_000;
 
 function Dashboard() {
+  const { user } = useAuth();
+  const isSignedIn = Boolean(user);
   const [showFirstOpen, setShowFirstOpen] = useState<boolean>(() => localStorage.getItem(INTRO_SEEN_KEY) !== 'true');
 
   // App core state
@@ -105,9 +110,10 @@ function Dashboard() {
     [applyWatchlists],
   );
 
-  // ── Initial load (seeds the demo scenario on a tab's first visit) ────────
+  // ── Initial load ──────────────────────────────────────────────────────────
+  // Signed-in users have a stored baseline; demo mode seeds the demo scenario on a tab's first visit.
   useEffect(() => {
-    if (sessionStorage.getItem(DEMO_INITIALIZED_KEY)) {
+    if (isSignedIn || sessionStorage.getItem(DEMO_INITIALIZED_KEY)) {
       loadMarketData(undefined, { includeStatic: true });
       return;
     }
@@ -116,7 +122,31 @@ function Dashboard() {
       .then(() => sessionStorage.setItem(DEMO_INITIALIZED_KEY, 'true'))
       .catch((err) => console.error('[Nazar] Failed to reset demo scenario', err))
       .finally(() => loadMarketData(undefined, { includeStatic: true }));
-  }, [loadMarketData]);
+  }, [loadMarketData, isSignedIn]);
+
+  // ── Record visits (signed-in users) ───────────────────────────────────────
+  // Leaving the page makes the current prices the new baseline, so the next arrival shows what changed
+  // since then. Demo mode keeps its baseline until "Mark Session as Read" or a simulated absence.
+  useEffect(() => {
+    if (!isSignedIn) return;
+    let visibleSince: number | null = document.visibilityState === 'visible' ? Date.now() : null;
+    const recordVisit = () => {
+      if (visibleSince !== null && Date.now() - visibleSince >= MIN_VISIBLE_MS_FOR_VISIT) {
+        api.recordVisit().catch((err) => console.error('[Nazar] Failed to record visit', err));
+      }
+      visibleSince = null;
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') recordVisit();
+      else visibleSince = Date.now();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', recordVisit);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', recordVisit);
+    };
+  }, [isSignedIn]);
 
   // ── Polling refresh ───────────────────────────────────────────────────────
   // Skipped while the tab is hidden; refreshes as soon as it becomes visible again.

@@ -30,7 +30,7 @@ A conventional watchlist answers one question: *what is the price now?* Nazar an
 
 **Briefing.** The home screen summarises what happened while you were away: how long you were gone, how many things changed meaningfully, the overall change across your watchlist, and the stocks that deserve attention most, ranked by score.
 
-**Change since your last visit.** Every stock shows the price when you last checked next to the current price, so you see your personal change rather than only the daily change.
+**Change since your last visit.** Every stock shows the price when you last checked next to the current price, so you see your personal change rather than only the daily change. For signed-in users this baseline is saved to the account, so it follows you across devices and sessions: leaving the page records your visit, and the next time you return Nazar shows what changed since then. A quick glance at another tab does not count as a visit.
 
 **Attention score (0 to 100).** A transparent, rule-based score for each stock. The "Why?" button on any stock breaks the score down into the individual signals and their points.
 
@@ -48,7 +48,7 @@ A conventional watchlist answers one question: *what is the price now?* Nazar an
 
 **Accounts or demo mode.** Sign in with email and password (Supabase), or choose "Skip for now" to explore the full app instantly in demo mode.
 
-**Accessible by design.** Keyboard navigation throughout, focus management in dialogs, touch-friendly controls and support for the operating system's reduced-motion setting.
+**Accessible by design.** Text colours meet the WCAG AA contrast standard (4.5:1), with keyboard navigation throughout, focus management in dialogs, touch-friendly controls and support for the operating system's reduced-motion setting.
 
 ---
 
@@ -115,6 +115,7 @@ In the Supabase **SQL Editor**, run these files in order:
 3. `supabase/migrations/20261027000001_one_default_watchlist_per_user.sql`
 4. `supabase/migrations/20261027000002_server_controlled_default_watchlist.sql`
 5. `supabase/migrations/20261027000003_active_watchlist_ownership.sql`
+6. `supabase/migrations/20261027000004_user_visit_state.sql`
 
 All migrations are idempotent, so running them again is safe.
 
@@ -185,7 +186,8 @@ graph TD
     G -->|Otherwise| I[Built-in narratives]
     E -->|Prices, indices, events| J[Built-in dataset]
     E -->|Symbol search| K[Mock or Twelve Data provider]
-    B -->|Last-seen prices, time away, demo data| N[Session store<br/>in memory, per browser tab]
+    B -->|Signed in: last-seen baseline| D
+    B -->|Demo mode: baseline, time away, demo watchlists| N[Session store<br/>in memory, per browser tab]
 ```
 
 A single Node.js process serves both the API and the frontend: in development through Vite middleware, in production from the built `dist/` folder. On Vercel the same Express app runs as a serverless function.
@@ -197,11 +199,11 @@ A single Node.js process serves both the API and the frontend: in development th
 | `server/validation.ts` | Validation of request input |
 | `server/errors.ts` | Error responses without internal details |
 | `server/middleware/auth.ts` | Verifies Supabase tokens; allows tokenless requests in demo mode |
-| `server/db/supabaseRepository.ts` | All database access through user-scoped clients |
+| `server/db/supabaseRepository.ts` | All database access through user-scoped clients, including the saved last-seen baseline |
 | `server/services/marketService.ts` | Builds enriched stocks, the briefing summary, timeline events and stock detail |
 | `server/services/attentionEngine.ts` | The attention score |
 | `server/services/narrativeService.ts` | Narratives, with caching, Gemini timeout and built-in fallbacks |
-| `server/services/sessionStore.ts` | Per-tab session: last-seen prices, time away, demo watchlists |
+| `server/services/sessionStore.ts` | Per-tab session for demo mode (last-seen prices, time away, demo watchlists) and the shared baseline logic |
 | `src/services/api.ts` | Frontend API client |
 | `src/components/` | React user interface |
 
@@ -213,7 +215,9 @@ A single Node.js process serves both the API and the frontend: in development th
 
 **Watchlist changes are atomic.** Creating a watchlist and replacing its stocks happen inside single PostgreSQL functions, so a failure can never leave a watchlist half-updated.
 
-**Ready to explore immediately.** Every new browser tab starts in a prepared "away for 7h 42m" scenario, so the full experience is visible straight away without waiting for markets to move.
+**Your baseline follows you.** For signed-in users, "when you last looked" and the prices at that moment are stored in the database, so the briefing is the same on every device and survives server restarts. Time away is the real time since your last visit.
+
+**Ready to explore immediately.** A new account, and every new browser tab in demo mode, starts in a prepared "away for 7h 42m" scenario, so the full experience is visible straight away without waiting for markets to move.
 
 ---
 
@@ -227,7 +231,7 @@ A single Node.js process serves both the API and the frontend: in development th
 | `GET` | `/api/market/stocks/all` | All supported stocks | No |
 | `GET` | `/api/market/search?q=` | Search by symbol, name, sector or tag | No |
 | `GET` | `/api/market/stocks?watchlistId=` | Enriched stocks for a watchlist | Yes |
-| `GET` | `/api/market/stocks/:symbol` | Stock detail with chart data | No |
+| `GET` | `/api/market/stocks/:symbol` | Stock detail with chart data | Yes |
 | `GET` | `/api/market/pulse?watchlistId=` | Briefing summary | Yes |
 | `GET` | `/api/market/events?watchlistId=` | Timeline events | Yes |
 | `POST` | `/api/market/events/:id/acknowledge` | Mark an event as seen | No |
@@ -237,11 +241,11 @@ A single Node.js process serves both the API and the frontend: in development th
 | `PUT` | `/api/watchlists/:id` | Rename, replace stocks or set as active | Yes |
 | `DELETE` | `/api/watchlists/:id` | Delete a watchlist | Yes |
 | `POST` | `/api/explain` | One-sentence explanation of a stock's change | No |
-| `POST` | `/api/session/time-travel` | Simulate time away (`preset` or `awaySeconds`) | No |
-| `POST` | `/api/session/sync` | Mark everything as seen (current prices become the baseline) | No |
+| `POST` | `/api/session/time-travel` | Simulate time away (`preset` or `awaySeconds`); saved to the account when signed in | Yes |
+| `POST` | `/api/session/sync` | Mark everything as seen, also sent automatically when a signed-in user leaves | Yes |
 | `POST` | `/api/demo/reset` | Restore the demo scenario | No |
 
-Authenticated routes expect a Supabase token in the `Authorization: Bearer <token>` header; an invalid token returns `401`. In demo mode, requests without a token use the in-memory session identified by the `X-Session-Id` header. Invalid input returns `400` with an `error` message, unknown API routes return `404`, and unexpected failures return a generic `500` message.
+Routes marked "Yes" expect a Supabase token in the `Authorization: Bearer <token>` header; an invalid token returns `401`. In demo mode, requests without a token use the in-memory session identified by the `X-Session-Id` header. Invalid input returns `400` with an `error` message, unknown API routes return `404`, and unexpected failures return a generic `500` message.
 
 ---
 
@@ -253,6 +257,7 @@ erDiagram
     PROFILES ||--o{ WATCHLISTS : owns
     PROFILES }o--o| WATCHLISTS : "active watchlist"
     WATCHLISTS ||--o{ WATCHLIST_ITEMS : contains
+    AUTH_USERS ||--o| USER_VISIT_STATE : "last-seen baseline"
     STOCKS ||--o{ WATCHLIST_ITEMS : "listed in"
 ```
 
@@ -262,11 +267,13 @@ erDiagram
 | `stocks` | The supported stocks (seeded by the server) |
 | `watchlists` | Watchlists, each owned by one user; one default watchlist per user |
 | `watchlist_items` | Which stocks belong to which watchlist |
+| `user_visit_state` | Each user's last visit time and the prices at that moment |
 
 **Security.** Row-Level Security is enabled on every table, so users can only read and change their own data. In addition:
 
 - Users can set a watchlist's name, but only the server can mark a watchlist as the default.
 - A user's active watchlist must be one of their own watchlists.
+- Each user can only read and write their own last-seen baseline.
 - At most one default watchlist can exist per user, even under concurrent requests.
 
 **Database functions**
@@ -321,7 +328,7 @@ erDiagram
 
 - **TypeScript strict mode** across the frontend and server.
 - **ESLint** with TypeScript and React hooks rules.
-- **Regression tests** (`npm test`) covering watchlist filtering, startup without Supabase, edit ordering, API error handling, authentication errors, watchlist renaming and session limits.
+- **Regression tests** (`npm test`) covering watchlist filtering, startup without Supabase, the saved last-seen baseline, edit ordering, API error handling, authentication errors, watchlist renaming and session limits.
 - **Security:** input validation, security headers with a Content Security Policy in production, error responses without internal details, and database-level ownership rules.
 - **Resilience:** slow or failing Gemini calls fall back to built-in narratives, background tabs stop polling, and out-of-date responses never overwrite newer data.
 
@@ -331,6 +338,6 @@ erDiagram
 
 - **Simulated market data.** Prices, indices and events come from a built-in dataset and do not change. Setting `MARKET_DATA_PROVIDER=twelve_data` switches only symbol search to a live provider.
 - **Generated chart history.** Charts use deterministic generated series; the "All" range shows the same data as "1Y".
-- **In-memory sessions.** Last-seen prices and simulated time away are kept in server memory per browser tab, so they reset when the server restarts and are not shared between serverless instances.
+- **In-memory demo sessions.** In demo mode, last-seen prices and simulated time away are kept in server memory per browser tab, so they reset when the server restarts and are not shared between serverless instances. (Signed-in users are not affected: their baseline is saved to the database. Timeline acknowledgements are still kept per browser tab.)
 - **Fourteen supported stocks.** New stocks are added in `server/data/stockUniverse.ts`.
 - **Not yet available:** password reset, live price streaming (the app refreshes every 15 seconds), and screens for renaming or deleting watchlists (the API already supports both).

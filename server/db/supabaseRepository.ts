@@ -3,6 +3,7 @@ import { Watchlist } from '../../src/types.js';
 import { BASE_STOCKS } from '../data/stockUniverse.js';
 import { getSupabaseConfig, isSupabaseConfigured } from '../config.js';
 import { ClientError } from '../errors.js';
+import { Baseline, demoBaseline } from '../services/sessionStore.js';
 
 // User-scoped client: every query runs as the user, so PostgreSQL Row-Level Security applies.
 function createUserClient(token: string) {
@@ -14,6 +15,25 @@ function createUserClient(token: string) {
       },
     },
   });
+}
+
+function toVisitRow(userId: string, baseline: Baseline) {
+  return {
+    user_id: userId,
+    last_visit_at: new Date(baseline.lastVisitTimestamp).toISOString(),
+    snapshot_prices: baseline.prices,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+/** Keeps only finite numeric prices (the row is user-writable, so its contents are not trusted). */
+function readPrices(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).filter(
+      (entry): entry is [string, number] => typeof entry[1] === 'number' && Number.isFinite(entry[1]),
+    ),
+  );
 }
 
 export const supabaseRepository = {
@@ -185,5 +205,40 @@ export const supabaseRepository = {
     }
 
     return newActiveId;
+  },
+
+  /**
+   * The user's "last seen" baseline. A first-time user starts from the demo scenario so the briefing has
+   * something to show; concurrent first requests are safe because the initial insert ignores an existing row.
+   */
+  async getVisitState(token: string, userId: string): Promise<Baseline> {
+    const db = createUserClient(token);
+    const read = () => db.from('user_visit_state').select('last_visit_at, snapshot_prices').maybeSingle();
+
+    let { data, error } = await read();
+    if (error) throw error;
+    if (!data) {
+      const initial = demoBaseline();
+      const { error: insertError } = await db
+        .from('user_visit_state')
+        .upsert(toVisitRow(userId, initial), { onConflict: 'user_id', ignoreDuplicates: true });
+      if (insertError) throw insertError;
+      ({ data, error } = await read());
+      if (error) throw error;
+      if (!data) return initial;
+    }
+
+    const lastVisitTimestamp = new Date(data.last_visit_at).getTime();
+    return {
+      lastVisitTimestamp: Number.isFinite(lastVisitTimestamp) ? lastVisitTimestamp : Date.now(),
+      prices: readPrices(data.snapshot_prices),
+    };
+  },
+
+  /** Stores a new "last seen" baseline (after a visit, "Mark as read" or a simulated absence). */
+  async saveVisitState(token: string, userId: string, baseline: Baseline) {
+    const db = createUserClient(token);
+    const { error } = await db.from('user_visit_state').upsert(toVisitRow(userId, baseline), { onConflict: 'user_id' });
+    if (error) throw error;
   },
 };

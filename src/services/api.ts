@@ -138,6 +138,11 @@ export const api = {
     await requestJSON('/api/session/sync', { method: 'POST' });
   },
 
+  /** Records that the user left: like syncSession, but survives the page being hidden or closed. */
+  async recordVisit(): Promise<void> {
+    await requestJSON('/api/session/sync', { method: 'POST', keepalive: true });
+  },
+
   // ── Demo reset ────────────────────────────────────────────────────────────
   // Restores the canonical "7h 42m away" demo scenario
   async resetDemo(): Promise<void> {

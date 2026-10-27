@@ -10,8 +10,11 @@ import {
   UserSession,
   applyDemoScenario,
   applyTimeTravel,
+  currentBaseline,
   getOrCreateSession,
   syncSession,
+  timeTravelBaseline,
+  withBaseline,
 } from './services/sessionStore.js';
 import { formatDuration } from './utils/formatDuration.js';
 import { errorHandler, sendError } from './errors.js';
@@ -51,6 +54,16 @@ supabaseRepository.ensureStocksSeeded().catch(console.error);
 /** The in-memory session for the requesting browser tab. */
 function sessionFor(req: Request): UserSession {
   return getOrCreateSession(req.headers['x-session-id'] as string | undefined);
+}
+
+/**
+ * The tab's session, with the "last seen" baseline loaded from Supabase for signed-in users
+ * (so it survives restarts, devices and serverless instances). Demo mode keeps the in-memory baseline.
+ */
+async function sessionWithBaseline(req: AuthenticatedRequest): Promise<UserSession> {
+  const session = sessionFor(req);
+  if (!req.token || !req.user) return session;
+  return withBaseline(session, await supabaseRepository.getVisitState(req.token, req.user.id));
 }
 
 /** The watchlist named by ?watchlistId=, falling back to the active (or first) one. */
@@ -191,7 +204,7 @@ app.delete('/api/watchlists/:id', requireAuth, async (req: AuthenticatedRequest,
 
 app.get('/api/market/stocks', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
-    const session = sessionFor(req);
+    const session = await sessionWithBaseline(req);
     const watchlist = await resolveWatchlist(req, session);
     const stocks = await market.getStocks(session, watchlist?.symbols ?? []);
     res.json({ success: true, data: stocks, watchlist });
@@ -202,7 +215,7 @@ app.get('/api/market/stocks', requireAuth, async (req: AuthenticatedRequest, res
 
 app.get('/api/market/pulse', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
-    const session = sessionFor(req);
+    const session = await sessionWithBaseline(req);
     const watchlist = await resolveWatchlist(req, session);
     res.json({ success: true, data: await market.getMarketPulse(session, watchlist?.symbols ?? []) });
   } catch (err) {
@@ -212,7 +225,7 @@ app.get('/api/market/pulse', requireAuth, async (req: AuthenticatedRequest, res)
 
 app.get('/api/market/events', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
-    const session = sessionFor(req);
+    const session = await sessionWithBaseline(req);
     const watchlist = await resolveWatchlist(req, session);
     res.json({ success: true, data: market.getEvents(session, watchlist?.symbols ?? []) });
   } catch (err) {
@@ -248,9 +261,9 @@ app.get('/api/market/search', async (req, res) => {
   }
 });
 
-app.get('/api/market/stocks/:symbol', async (req, res) => {
+app.get('/api/market/stocks/:symbol', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
-    const detail = await market.getStockDetail(sessionFor(req), req.params.symbol.toUpperCase());
+    const detail = await market.getStockDetail(await sessionWithBaseline(req), req.params.symbol.toUpperCase());
     if (!detail) return res.status(404).json({ error: 'Stock not found' });
     res.json({ success: true, data: detail });
   } catch (err) {
@@ -270,8 +283,7 @@ app.post('/api/explain', (req, res) => {
 
 // ── Session simulation (time away, mark as read, demo reset) ────────────────
 
-app.post('/api/session/time-travel', (req, res) => {
-  const session = sessionFor(req);
+app.post('/api/session/time-travel', requireAuth, async (req: AuthenticatedRequest, res) => {
   const { preset, awaySeconds: requestedSeconds } = req.body ?? {};
   if (
     requestedSeconds !== undefined &&
@@ -279,18 +291,44 @@ app.post('/api/session/time-travel', (req, res) => {
   ) {
     return res.status(400).json({ error: `awaySeconds must be a number between 0 and ${MAX_AWAY_SECONDS}` });
   }
-  const awaySeconds = applyTimeTravel(session, typeof preset === 'string' ? preset : undefined, requestedSeconds);
-  res.json({
-    success: true,
-    simulatedAwaySeconds: awaySeconds,
-    lastVisitTimestamp: session.lastVisitTimestamp,
-    awayFormatted: formatDuration(awaySeconds),
-  });
+  const presetName = typeof preset === 'string' ? preset : undefined;
+  try {
+    let awaySeconds: number;
+    let lastVisitTimestamp: number;
+    if (req.token && req.user) {
+      // Signed in: the simulated absence becomes the stored baseline
+      const result = timeTravelBaseline(presetName, requestedSeconds);
+      await supabaseRepository.saveVisitState(req.token, req.user.id, result.baseline);
+      awaySeconds = result.awaySeconds;
+      lastVisitTimestamp = result.baseline.lastVisitTimestamp;
+    } else {
+      const session = sessionFor(req);
+      awaySeconds = applyTimeTravel(session, presetName, requestedSeconds);
+      lastVisitTimestamp = session.lastVisitTimestamp;
+    }
+    res.json({
+      success: true,
+      simulatedAwaySeconds: awaySeconds,
+      lastVisitTimestamp,
+      awayFormatted: formatDuration(awaySeconds),
+    });
+  } catch (err) {
+    sendError(res, err);
+  }
 });
 
-app.post('/api/session/sync', (req, res) => {
-  syncSession(sessionFor(req));
-  res.json({ success: true, timestamp: Date.now() });
+/** "Mark as read" (and the automatic record of a visit when a signed-in user leaves): prices now = baseline. */
+app.post('/api/session/sync', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    if (req.token && req.user) {
+      await supabaseRepository.saveVisitState(req.token, req.user.id, currentBaseline());
+    } else {
+      syncSession(sessionFor(req));
+    }
+    res.json({ success: true, timestamp: Date.now() });
+  } catch (err) {
+    sendError(res, err);
+  }
 });
 
 app.post('/api/demo/reset', (req, res) => {

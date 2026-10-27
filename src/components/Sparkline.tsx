@@ -36,7 +36,7 @@ export const Sparkline: React.FC<SparklineProps> = ({
   const pathD = `M ${pointsArray.map((p) => p.str).join(' L ')}`;
   const areaD = `${pathD} L ${width},${height} L 0,${height} Z`;
 
-  const strokeColor = isPositive ? '#04B488' : '#ED5533';
+  const strokeColor = isPositive ? '#037F60' : '#C63211'; // same as --color-green / --color-red
   const gradientId = `spark-grad-${Math.abs(Math.round(data[0] + data[data.length - 1]))}-${isPositive ? 'pos' : 'neg'}`;
 
   return (
