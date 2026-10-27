@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, FolderPlus, Check } from 'lucide-react';
 import { Stock } from '../types';
+import { currencySymbol } from '../lib/currency';
 
 interface CreateWatchlistModalProps {
   isOpen: boolean;
@@ -115,7 +116,8 @@ export const CreateWatchlistModal: React.FC<CreateWatchlistModalProps> = ({
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-[var(--color-faint)] text-[10px]">
-                          ₹{stock.currentPrice.toFixed(0)}
+                          {currencySymbol(stock.exchange)}
+                          {stock.currentPrice.toFixed(0)}
                         </span>
                         {isChecked && <Check className="w-3.5 h-3.5 text-[var(--color-green)]" />}
                       </div>

@@ -1,5 +1,6 @@
 import { AttentionFactor } from '../../src/types.js';
 import { BaseStockData } from '../data/stockUniverse.js';
+import { currencySymbol } from '../../src/lib/currency.js';
 
 export interface AttentionResult {
   score: number;
@@ -20,6 +21,7 @@ export function calculateAttention(
   awayDurationStr: string,
 ): AttentionResult {
   const factors: AttentionFactor[] = [];
+  const currency = currencySymbol(stock.exchange);
   let score = 20; // baseline score
 
   const priceChangePct = ((currentPrice - stock.yesterdayClose) / stock.yesterdayClose) * 100;
@@ -78,7 +80,7 @@ export function calculateAttention(
     score += 28;
     factors.push({
       id: 'breakout_high',
-      label: `Crossed 30-day high (₹${stock.high30d.toLocaleString('en-IN')})`,
+      label: `Crossed 30-day high (${currency}${stock.high30d.toLocaleString('en-IN')})`,
       points: 28,
       type: 'breakout',
       description: `Clean technical breakout above the 30-day resistance level.`,
@@ -90,7 +92,7 @@ export function calculateAttention(
       label: `Within 1.5% of 30-day high`,
       points: 18,
       type: 'breakout',
-      description: `Approaching critical multi-week resistance at ₹${stock.high30d.toLocaleString('en-IN')}.`,
+      description: `Approaching critical multi-week resistance at ${currency}${stock.high30d.toLocaleString('en-IN')}.`,
     });
   }
 
@@ -116,7 +118,7 @@ export function calculateAttention(
         label: `${userDeltaPct >= 0 ? '+' : ''}${userDeltaPct.toFixed(1)}% since your last visit`,
         points: 16,
         type: 'price',
-        description: `Price moved ₹${Math.abs(currentPrice - userPreviousPrice).toFixed(1)} since you checked ${awayDurationStr} ago.`,
+        description: `Price moved ${currency}${Math.abs(currentPrice - userPreviousPrice).toFixed(1)} since you checked ${awayDurationStr} ago.`,
       });
     }
   }

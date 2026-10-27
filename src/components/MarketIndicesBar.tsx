@@ -28,7 +28,7 @@ export const MarketIndicesBar: React.FC<MarketIndicesBarProps> = ({ indices }) =
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-[var(--color-ink)] ">{idx.name}</span>
                     <span className="text-[11px] font-mono text-[var(--color-muted)]">
-                      ₹{idx.value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      {idx.value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 text-[10px] font-mono mt-0.5">

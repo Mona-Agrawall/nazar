@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { StockDetailExtended, Timeframe, PricePoint } from '../types';
 import { api } from '../services/api';
+import { currencySymbol } from '../lib/currency';
 
 interface StockDetailModalProps {
   symbol: string | null;
@@ -227,7 +228,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
                 <div>
                   <div className="text-[9px] uppercase tracking-normal text-[var(--color-faint)] mb-1">Last seen</div>
                   <div className="font-mono text-2xl text-[var(--color-muted)] font-normal tabular-nums">
-                    ₹{(stockDetail.userDelta?.previousPrice ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    {currencySymbol(stockDetail.exchange)}
+                    {(stockDetail.userDelta?.previousPrice ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div className="text-[var(--color-border)] font-mono text-xl" aria-hidden>
@@ -236,7 +238,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
                 <div>
                   <div className="text-[9px] uppercase tracking-normal text-[var(--color-faint)] mb-1">Now</div>
                   <div className="font-mono text-2xl text-[var(--color-ink)] font-medium tabular-nums">
-                    ₹{(stockDetail.currentPrice ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    {currencySymbol(stockDetail.exchange)}
+                    {(stockDetail.currentPrice ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div>
@@ -287,7 +290,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
                 <div>
                   <div className="flex items-baseline gap-3">
                     <span className="text-3xl sm:text-4xl font-mono font-normal text-[var(--color-ink)] tabular-nums">
-                      ₹{displayPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      {currencySymbol(stockDetail.exchange)}
+                      {displayPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </span>
                     <span
                       className={`inline-flex items-center text-sm font-mono font-medium ${isPositive ? 'text-[var(--color-green)]' : 'text-[var(--color-red)]'}`}
@@ -315,7 +319,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
                       </span>
                     ) : (
                       <span>
-                        Range: ₹{(stockDetail.dayLow ?? 0).toLocaleString('en-IN')} – ₹
+                        Range: {currencySymbol(stockDetail.exchange)}
+                        {(stockDetail.dayLow ?? 0).toLocaleString('en-IN')} – {currencySymbol(stockDetail.exchange)}
                         {(stockDetail.dayHigh ?? 0).toLocaleString('en-IN')}
                       </span>
                     )}
@@ -447,7 +452,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
                 {
                   icon: <TrendingUp className="w-3.5 h-3.5 text-[var(--color-muted)]" aria-hidden />,
                   label: '30D High',
-                  value: `₹${(stockDetail.high30d ?? 0).toLocaleString('en-IN')}`,
+                  value: `${currencySymbol(stockDetail.exchange)}${(stockDetail.high30d ?? 0).toLocaleString('en-IN')}`,
                   sub:
                     (stockDetail.currentPrice ?? 0) >= (stockDetail.high30d ?? 0)
                       ? 'Broken out ↑'
@@ -462,8 +467,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
                 {
                   icon: <Layers className="w-3.5 h-3.5 text-[var(--color-muted)]" aria-hidden />,
                   label: '52W High / Low',
-                  value: `₹${(stockDetail.high52w ?? 0).toLocaleString('en-IN')}`,
-                  sub: `Low ₹${(stockDetail.low52w ?? 0).toLocaleString('en-IN')} · ${stockDetail.marketCap ?? '—'}`,
+                  value: `${currencySymbol(stockDetail.exchange)}${(stockDetail.high52w ?? 0).toLocaleString('en-IN')}`,
+                  sub: `Low ${currencySymbol(stockDetail.exchange)}${(stockDetail.low52w ?? 0).toLocaleString('en-IN')} · ${stockDetail.marketCap ?? '—'}`,
                 },
               ].map((m) => (
                 <div

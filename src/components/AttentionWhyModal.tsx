@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Stock, AttentionFactor } from '../types';
 import { api } from '../services/api';
+import { currencySymbol } from '../lib/currency';
 
 interface AttentionWhyModalProps {
   stock: Stock | null;
@@ -210,7 +211,9 @@ export const AttentionWhyModal: React.FC<AttentionWhyModalProps> = ({ stock, onC
             {/* ── Delta comparison footer ──────────────────────────────────── */}
             <div className="pt-4 border-t border-[var(--color-border-soft)] flex items-center justify-between">
               <div className="text-[11px] text-[var(--color-muted)] font-normal">
-                Last seen at ₹{stock.userDelta.previousPrice.toFixed(2)} · Now ₹{stock.currentPrice.toFixed(2)}
+                Last seen at {currencySymbol(stock.exchange)}
+                {stock.userDelta.previousPrice.toFixed(2)} · Now {currencySymbol(stock.exchange)}
+                {stock.currentPrice.toFixed(2)}
                 <span
                   className={`ml-2 font-mono font-medium ${isPos ? 'text-[var(--color-green)]' : 'text-[var(--color-red)]'}`}
                 >

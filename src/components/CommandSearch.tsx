@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Search, Plus, Check, X } from 'lucide-react';
 import { Stock } from '../types';
 import { api } from '../services/api';
+import { currencySymbol } from '../lib/currency';
 
 const SEARCH_DEBOUNCE_MS = 200;
 
@@ -192,7 +193,8 @@ export const CommandSearch: React.FC<CommandSearchProps> = ({
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <span className="font-mono text-sm font-medium text-[var(--color-ink)] block">
-                          ₹{stock.currentPrice.toFixed(2)}
+                          {currencySymbol(stock.exchange)}
+                          {stock.currentPrice.toFixed(2)}
                         </span>
                         <span
                           className={`font-mono text-[11px] font-medium ${

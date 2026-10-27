@@ -3,6 +3,7 @@ import { motion, useInView } from 'motion/react';
 import { ArrowUpRight, ArrowDownRight, Clock, CheckCircle, ChevronRight, AlertCircle, HelpCircle } from 'lucide-react';
 import { MarketEvent, MarketPulse, Stock } from '../types';
 import { Sparkline } from './Sparkline';
+import { currencySymbol } from '../lib/currency';
 
 interface MarketPulseHeroProps {
   pulse: MarketPulse | null;
@@ -114,7 +115,8 @@ function PulseItem({ stock, rank, onSelect, onWhy, isAcknowledged, onAck, delay 
             {stock.userDelta.percentDiff.toFixed(2)}%
           </div>
           <div className="text-[10px] text-[var(--color-faint)] font-mono mt-0.5">
-            ₹{stock.currentPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            {currencySymbol(stock.exchange)}
+            {stock.currentPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
           </div>
         </div>
       </div>
@@ -246,7 +248,8 @@ function FlagshipCard({ stock, onSelect, onWhy, isAcknowledged, onAck }: Flagshi
             <div>
               <div className="text-[9px] uppercase tracking-normal text-[var(--color-faint)] mb-0.5">Last seen</div>
               <div className="font-mono text-[var(--color-muted)] text-sm tabular-nums">
-                ₹{stock.userDelta.previousPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                {currencySymbol(stock.exchange)}
+                {stock.userDelta.previousPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
             </div>
             <div className="text-[var(--color-border)] font-mono" aria-hidden>
@@ -255,7 +258,8 @@ function FlagshipCard({ stock, onSelect, onWhy, isAcknowledged, onAck }: Flagshi
             <div>
               <div className="text-[9px] uppercase tracking-normal text-[var(--color-faint)] mb-0.5">Now</div>
               <div className="font-mono text-[var(--color-ink)] font-medium text-sm tabular-nums">
-                ₹{stock.currentPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                {currencySymbol(stock.exchange)}
+                {stock.currentPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
             </div>
             <div>
