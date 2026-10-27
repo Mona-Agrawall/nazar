@@ -54,18 +54,21 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
         {/* Left: Brand logo & live pulse */}
         <div className="flex items-center gap-8">
-          <div onClick={() => onTabChange('pulse')} className="flex items-center gap-3 cursor-pointer group">
-            <div className="relative flex items-center justify-center transition-colors">
+          <button
+            type="button"
+            onClick={() => onTabChange('pulse')}
+            aria-label="Nazar — go to overview"
+            className="flex items-center gap-3 cursor-pointer group text-left"
+          >
+            <span className="relative flex items-center justify-center transition-colors">
               <img src="/nazar-favicon.png" alt="Nazar Icon" className="w-8 h-8 object-contain" />
               <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-green)] opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-green)]"></span>
               </span>
-            </div>
-            <div>
-              <span className="text-lg sm:text-xl font-medium text-[var(--color-ink)] block">NAZAR</span>
-            </div>
-          </div>
+            </span>
+            <span className="text-lg sm:text-xl font-medium text-[var(--color-ink)] block">NAZAR</span>
+          </button>
 
           {/* Editorial Navigation tabs */}
           <nav className="hidden md:flex items-center gap-6 text-sm uppercase tracking-normal font-semibold text-[var(--color-ink-soft)]">
@@ -100,21 +103,22 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {/* Editorial Session Time Display & Simulator Trigger */}
-          <div
+          <button
+            type="button"
             onClick={onOpenTimeTravel}
             title="Simulate time away to test Nazar calculation"
             className="cursor-pointer group text-right hidden lg:block shrink-0"
           >
-            <div className="text-[10px] uppercase font-medium text-[var(--color-faint)] group-hover:text-[var(--color-muted)] transition-colors whitespace-nowrap">
+            <span className="block text-[10px] uppercase font-medium text-[var(--color-faint)] group-hover:text-[var(--color-muted)] transition-colors whitespace-nowrap">
               Session Time
-            </div>
-            <div className="text-xs font-mono font-semibold text-[var(--color-ink)] flex items-center justify-end gap-1 whitespace-nowrap">
+            </span>
+            <span className="text-xs font-mono font-semibold text-[var(--color-ink)] flex items-center justify-end gap-1 whitespace-nowrap">
               <span>{awayFormatted} away</span>
               <span className="text-[9px] text-[var(--color-green)] underline underline-offset-2 decoration-[var(--color-border)] group-hover:decoration-[var(--color-green)]">
                 Simulate
               </span>
-            </div>
-          </div>
+            </span>
+          </button>
 
           {/* Feed state indicator with glowing dot & tooltip popover */}
           <div className="relative shrink-0">

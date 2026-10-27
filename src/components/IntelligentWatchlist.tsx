@@ -341,7 +341,9 @@ export const IntelligentWatchlist: React.FC<IntelligentWatchlistProps> = ({
                           onRemoveStock(stock.symbol);
                         }}
                         title="Remove from watchlist"
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[var(--color-faint)] hover:text-[var(--color-red)] hover:bg-[var(--color-red-soft)] transition-all"
+                        aria-label={`Remove ${stock.symbol} from watchlist`}
+                        // Always visible on touch screens; on hover devices shown on row hover or keyboard focus
+                        className="opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100 p-1.5 rounded-lg text-[var(--color-faint)] hover:text-[var(--color-red)] hover:bg-[var(--color-red-soft)] transition-all"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

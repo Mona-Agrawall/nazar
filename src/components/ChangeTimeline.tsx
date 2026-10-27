@@ -122,6 +122,15 @@ export const ChangeTimeline: React.FC<ChangeTimelineProps> = ({
                   exit={{ opacity: 0, scale: 0.96 }}
                   transition={{ delay: idx * 0.04 }}
                   onClick={() => onSelectStock(evt.stockSymbol)}
+                  onKeyDown={(e) => {
+                    if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault();
+                      onSelectStock(evt.stockSymbol);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${evt.stockSymbol}: ${evt.title} (${evt.change}). Open details.`}
                   className={`group relative p-6 rounded-2xl border transition-all duration-200 cursor-pointer ${
                     isAck
                       ? 'bg-[var(--color-panel)] border-[var(--color-border-soft)] opacity-60'
