@@ -167,11 +167,13 @@ export const supabaseRepository = {
     const { error } = await db.from('watchlists').delete().eq('id', watchlistId);
     if (error) throw error;
 
-    // We must return the new active ID (fallback to first available)
+    // The FK sets profiles.active_watchlist_id to NULL only when the active watchlist was deleted;
+    // otherwise the user's current selection stays as it is.
+    const { data: profile } = await db.from('profiles').select('active_watchlist_id').single();
+    if (profile?.active_watchlist_id) return profile.active_watchlist_id as string;
+
     const { watchlists } = await this.getWatchlists(token);
     const newActiveId = watchlists[0]?.id || null;
-
-    // Update profile if active was deleted
     const {
       data: { user },
     } = await db.auth.getUser();

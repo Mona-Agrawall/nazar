@@ -132,6 +132,12 @@ app.delete('/api/watchlists/:id', requireAuth, async (req: AuthenticatedRequest,
       return res.json({ success: true, activeId });
     }
     const session = sessionFor(req);
+    const target = session.watchlists.find((w) => w.id === id);
+    if (!target) return res.status(404).json({ error: 'Watchlist not found' });
+    // Same rules as the Supabase path: the default (and therefore the last) watchlist stays.
+    if (target.isDefault) {
+      return res.status(400).json({ error: 'Cannot delete the default watchlist' });
+    }
     if (session.watchlists.length <= 1) {
       return res.status(400).json({ error: 'Cannot delete the only watchlist' });
     }
