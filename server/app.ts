@@ -13,8 +13,7 @@ import {
   syncSession,
 } from './services/sessionStore.js';
 import { formatDuration } from './utils/formatDuration.js';
-
-const MAX_WATCHLIST_NAME_LENGTH = 50;
+import { MAX_AWAY_SECONDS, isValidId, parseName, parseSymbols, queryString } from './validation.js';
 
 const app = express();
 app.use(express.json());
@@ -29,16 +28,12 @@ function sessionFor(req: Request): UserSession {
 
 /** The watchlist named by ?watchlistId=, falling back to the active (or first) one. */
 async function resolveWatchlist(req: AuthenticatedRequest, session: UserSession): Promise<Watchlist | undefined> {
-  const requestedId = req.query.watchlistId as string | undefined;
+  const requestedId = queryString(req.query.watchlistId, 64);
   if (req.token) {
     const { watchlists, activeId } = await supabaseRepository.getWatchlists(req.token);
     return watchlists.find((w) => w.id === (requestedId || activeId)) || watchlists[0];
   }
   return session.watchlists.find((w) => w.id === (requestedId || session.activeWatchlistId)) || session.watchlists[0];
-}
-
-function onlyStrings(values: unknown[]): string[] {
-  return values.filter((v): v is string => typeof v === 'string');
 }
 
 // ── Health & market overview ────────────────────────────────────────────────
@@ -76,21 +71,21 @@ app.get('/api/watchlists', requireAuth, async (req: AuthenticatedRequest, res) =
 });
 
 app.post('/api/watchlists', requireAuth, async (req: AuthenticatedRequest, res) => {
-  const { name, symbols } = req.body;
-  if (!name || typeof name !== 'string' || !name.trim()) {
-    return res.status(400).json({ error: 'Watchlist name required' });
-  }
-  const trimmedName = name.trim().slice(0, MAX_WATCHLIST_NAME_LENGTH);
+  const { name, symbols } = req.body ?? {};
+  const parsedName = parseName(name);
+  if ('error' in parsedName) return res.status(400).json({ error: parsedName.error });
+  const parsedSymbols = parseSymbols(symbols ?? []);
+  if ('error' in parsedSymbols) return res.status(400).json({ error: parsedSymbols.error });
   try {
     if (req.token) {
-      const data = await supabaseRepository.createWatchlist(req.token, trimmedName, symbols || []);
+      const data = await supabaseRepository.createWatchlist(req.token, parsedName.value, parsedSymbols.value);
       return res.json({ success: true, data });
     }
     const session = sessionFor(req);
     const watchlist: Watchlist = {
       id: `wl_${Date.now()}`,
-      name: trimmedName,
-      symbols: Array.isArray(symbols) ? onlyStrings(symbols) : ['RELIANCE', 'TCS'],
+      name: parsedName.value,
+      symbols: parsedSymbols.value,
       isDefault: false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -105,17 +100,30 @@ app.post('/api/watchlists', requireAuth, async (req: AuthenticatedRequest, res) 
 
 app.put('/api/watchlists/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
   const { id } = req.params;
-  const { name, symbols, setActive } = req.body;
+  if (!isValidId(id)) return res.status(404).json({ error: 'Watchlist not found' });
+  const { name, symbols, setActive } = req.body ?? {};
+  const parsedName = name === undefined ? undefined : parseName(name);
+  if (parsedName && 'error' in parsedName) return res.status(400).json({ error: parsedName.error });
+  const parsedSymbols = symbols === undefined ? undefined : parseSymbols(symbols);
+  if (parsedSymbols && 'error' in parsedSymbols) return res.status(400).json({ error: parsedSymbols.error });
+  if (setActive !== undefined && typeof setActive !== 'boolean') {
+    return res.status(400).json({ error: 'setActive must be a boolean' });
+  }
+  const newName = parsedName && 'value' in parsedName ? parsedName.value : undefined;
+  const newSymbols = parsedSymbols && 'value' in parsedSymbols ? parsedSymbols.value : undefined;
+  if (!newName && !newSymbols && !setActive) {
+    return res.status(400).json({ error: 'Nothing to update: provide name, symbols or setActive' });
+  }
   try {
     if (req.token) {
-      const data = await supabaseRepository.updateWatchlist(req.token, id, name, symbols, setActive);
+      const data = await supabaseRepository.updateWatchlist(req.token, id, newName, newSymbols, setActive);
       return res.json({ success: true, data });
     }
     const session = sessionFor(req);
     const watchlist = session.watchlists.find((w) => w.id === id);
     if (!watchlist) return res.status(404).json({ error: 'Watchlist not found' });
-    if (name && typeof name === 'string') watchlist.name = name.trim().slice(0, MAX_WATCHLIST_NAME_LENGTH);
-    if (Array.isArray(symbols)) watchlist.symbols = onlyStrings(symbols);
+    if (newName) watchlist.name = newName;
+    if (newSymbols) watchlist.symbols = newSymbols;
     watchlist.updatedAt = Date.now();
     if (setActive) session.activeWatchlistId = id;
     res.json({ success: true, data: watchlist });
@@ -126,6 +134,7 @@ app.put('/api/watchlists/:id', requireAuth, async (req: AuthenticatedRequest, re
 
 app.delete('/api/watchlists/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
   const { id } = req.params;
+  if (!isValidId(id)) return res.status(404).json({ error: 'Watchlist not found' });
   try {
     if (req.token) {
       const activeId = await supabaseRepository.deleteWatchlist(req.token, id);
@@ -206,7 +215,7 @@ app.get('/api/market/stocks/all', async (_req, res) => {
 
 app.get('/api/market/search', async (req, res) => {
   try {
-    res.json({ success: true, data: await market.searchStocks((req.query.q as string) || '') });
+    res.json({ success: true, data: await market.searchStocks(queryString(req.query.q, 50) ?? '') });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -226,8 +235,8 @@ app.get('/api/market/stocks/:symbol', async (req, res) => {
 
 app.post('/api/explain', (req, res) => {
   const facts = req.body?.facts;
-  if (!facts || !facts.symbol) {
-    return res.status(400).json({ error: 'facts.symbol required' });
+  if (!facts || typeof facts.symbol !== 'string' || !facts.symbol || facts.symbol.length > 20) {
+    return res.status(400).json({ error: 'facts.symbol must be a ticker symbol' });
   }
   res.json({ success: true, narrative: buildExplanation(facts) });
 });
@@ -236,7 +245,14 @@ app.post('/api/explain', (req, res) => {
 
 app.post('/api/session/time-travel', (req, res) => {
   const session = sessionFor(req);
-  const awaySeconds = applyTimeTravel(session, req.body.preset, req.body.awaySeconds);
+  const { preset, awaySeconds: requestedSeconds } = req.body ?? {};
+  if (
+    requestedSeconds !== undefined &&
+    (typeof requestedSeconds !== 'number' || requestedSeconds < 0 || requestedSeconds > MAX_AWAY_SECONDS)
+  ) {
+    return res.status(400).json({ error: `awaySeconds must be a number between 0 and ${MAX_AWAY_SECONDS}` });
+  }
+  const awaySeconds = applyTimeTravel(session, typeof preset === 'string' ? preset : undefined, requestedSeconds);
   res.json({
     success: true,
     simulatedAwaySeconds: awaySeconds,
