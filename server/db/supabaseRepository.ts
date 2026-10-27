@@ -114,9 +114,15 @@ export const supabaseRepository = {
   async updateWatchlist(token: string, watchlistId: string, name?: string, symbols?: string[], setActive?: boolean) {
     const db = createUserClient(token);
 
-    // If changing name and/or symbols, use the RPC
+    // Replacing symbols goes through the RPC; a name-only change must not touch the items.
     // If only setActive is true, we just update the profile
-    if (name || symbols) {
+    if (name && !symbols) {
+      const { error } = await db
+        .from('watchlists')
+        .update({ name, updated_at: new Date().toISOString() })
+        .eq('id', watchlistId);
+      if (error) throw error;
+    } else if (symbols) {
       // If name isn't provided but we are replacing items, we need the current name to pass to RPC
       let finalName = name;
       if (!finalName) {
@@ -127,7 +133,7 @@ export const supabaseRepository = {
       const { error } = await db.rpc('replace_watchlist_items', {
         p_watchlist_id: watchlistId,
         p_name: finalName,
-        p_symbols: symbols || [],
+        p_symbols: symbols,
       });
       if (error) throw error;
     }
