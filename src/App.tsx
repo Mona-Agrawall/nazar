@@ -58,15 +58,23 @@ function Dashboard() {
     setWatchlists(next);
   }, []);
 
+  // Every load (and every edit) takes a new generation; a load only applies its results if no newer
+  // load or edit started meanwhile, so a slow poll can't overwrite a newer watchlist switch or edit.
+  const loadGenerationRef = useRef(0);
+  const startLoad = () => ++loadGenerationRef.current;
+  const isLatestLoad = (generation: number) => generation === loadGenerationRef.current;
+
   // ── Load market data ──────────────────────────────────────────────────────
   const loadMarketData = useCallback(
     async (watchlistId?: string) => {
+      const generation = startLoad();
       try {
         const [wlData, idxData, statusData] = await Promise.all([
           api.getWatchlists(),
           api.getIndices(),
           api.getFeedStatus(),
         ]);
+        if (!isLatestLoad(generation)) return;
 
         applyWatchlists(wlData.watchlists);
         setIndices(idxData);
@@ -81,6 +89,7 @@ function Dashboard() {
           api.getPulse(targetWlId),
           api.getEvents(targetWlId),
         ]);
+        if (!isLatestLoad(generation)) return;
 
         setStocks(stockData.stocks);
         setAllAvailableStocks(allData);
@@ -137,12 +146,14 @@ function Dashboard() {
     api
       .updateWatchlist(id, { setActive: true })
       .catch((err) => console.error('[Nazar] Failed to save active watchlist', err));
+    const generation = startLoad();
     try {
       const [stockData, pulseData, eventData] = await Promise.all([
         api.getStocks(id),
         api.getPulse(id),
         api.getEvents(id),
       ]);
+      if (!isLatestLoad(generation)) return;
       setStocks(stockData.stocks);
       setPulse(pulseData);
       setEvents(eventData);
@@ -168,6 +179,7 @@ function Dashboard() {
     const wl = watchlistsRef.current.find((w) => w.id === id);
     if (!wl || !wl.symbols.includes(symbol)) return;
     const removedStock = stocks.find((s) => s.symbol === symbol);
+    startLoad(); // results of loads already in flight predate this edit
     // Optimistic update
     setSymbols(id, (symbols) => symbols.filter((s) => s !== symbol));
     setStocks((prev) => prev.filter((s) => s.symbol !== symbol));
@@ -186,6 +198,7 @@ function Dashboard() {
     const id = activeWatchlistId;
     const wl = watchlistsRef.current.find((w) => w.id === id);
     if (!wl || wl.symbols.includes(symbol)) return;
+    startLoad(); // results of loads already in flight predate this edit
     setSymbols(id, (symbols) => [...symbols, symbol]);
     try {
       await saveSymbols(id);
