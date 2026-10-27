@@ -21,8 +21,8 @@ export const FirstOpenExperience: React.FC<FirstOpenExperienceProps> = ({ onComp
     if (!ctx) return;
 
     let animId: number;
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
+    const width = (canvas.width = window.innerWidth);
+    const height = (canvas.height = window.innerHeight);
 
     // Pre-generate smooth price wave
     const pointsCount = 140;

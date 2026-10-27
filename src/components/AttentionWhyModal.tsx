@@ -48,16 +48,33 @@ export const AttentionWhyModal: React.FC<AttentionWhyModalProps> = ({ stock, onC
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, !!stock);
 
-  // Fetch the explanation whenever a different stock opens
+  // Fetch the explanation when the stock or its facts change (not on every poll's new object)
+  const symbol = stock?.symbol;
+  const priceChangePct = stock?.userDelta.percentDiff;
+  const volumeMultiple = stock?.volumeRatio;
+  const timeSinceLastSeen = stock?.userDelta.lastSeenTimeFormatted;
   useEffect(() => {
-    if (!stock) return;
+    if (!symbol) return;
+    let cancelled = false;
     setExplanation(null);
     setIsExplanationLoading(true);
     api
-      .getExplanation(stock)
-      .then(setExplanation)
-      .finally(() => setIsExplanationLoading(false));
-  }, [stock?.symbol]);
+      .getExplanationFor({
+        symbol,
+        priceChangePct: priceChangePct ?? 0,
+        volumeMultiple: volumeMultiple ?? 1,
+        timeSinceLastSeen: timeSinceLastSeen ?? '',
+      })
+      .then((text) => {
+        if (!cancelled) setExplanation(text);
+      })
+      .finally(() => {
+        if (!cancelled) setIsExplanationLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [symbol, priceChangePct, volumeMultiple, timeSinceLastSeen]);
 
   if (!stock) return null;
 

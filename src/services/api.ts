@@ -45,6 +45,13 @@ async function fetchJSON<T>(url: string, options: RequestInit = {}): Promise<T> 
   return json.data !== undefined ? json.data : json;
 }
 
+export interface ExplanationFacts {
+  symbol: string;
+  priceChangePct: number;
+  volumeMultiple: number;
+  timeSinceLastSeen: string;
+}
+
 // ── API service layer ───────────────────────────────────────────────────────
 export const api = {
   async getIndices(): Promise<MarketIndex[]> {
@@ -139,12 +146,15 @@ export const api = {
 
   // ── "Why it matters" explanation for a stock ──────────────────────────────
   async getExplanation(stock: Stock): Promise<string> {
-    const facts = {
+    return api.getExplanationFor({
       symbol: stock.symbol,
       priceChangePct: stock.userDelta.percentDiff,
       volumeMultiple: stock.volumeRatio,
       timeSinceLastSeen: stock.userDelta.lastSeenTimeFormatted,
-    };
+    });
+  },
+
+  async getExplanationFor(facts: ExplanationFacts): Promise<string> {
     try {
       const json = await requestJSON('/api/explain', {
         method: 'POST',
@@ -153,7 +163,7 @@ export const api = {
       });
       return json.narrative;
     } catch {
-      return `${stock.symbol} showed meaningful activity since your last visit.`;
+      return `${facts.symbol} showed meaningful activity since your last visit.`;
     }
   },
 };

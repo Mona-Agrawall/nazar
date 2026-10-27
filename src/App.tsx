@@ -223,7 +223,8 @@ function Dashboard() {
 
   const handleToggleWatchlistStock = (symbol: string) => {
     const wl = watchlistsRef.current.find((w) => w.id === activeWatchlistId);
-    wl?.symbols.includes(symbol) ? handleRemoveStock(symbol) : handleAddStock(symbol);
+    if (wl?.symbols.includes(symbol)) handleRemoveStock(symbol);
+    else handleAddStock(symbol);
   };
 
   const handleCreateWatchlist = async (name: string, symbols: string[]) => {
