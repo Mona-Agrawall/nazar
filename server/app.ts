@@ -14,6 +14,7 @@ import {
   syncSession,
 } from './services/sessionStore.js';
 import { formatDuration } from './utils/formatDuration.js';
+import { errorHandler, sendError } from './errors.js';
 import { MAX_AWAY_SECONDS, isValidId, parseName, parseSymbols, queryString } from './validation.js';
 
 const app = express();
@@ -91,8 +92,8 @@ app.get('/api/watchlists', requireAuth, async (req: AuthenticatedRequest, res) =
     }
     const session = sessionFor(req);
     res.json({ success: true, data: session.watchlists, activeId: session.activeWatchlistId });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  } catch (err) {
+    sendError(res, err);
   }
 });
 
@@ -119,8 +120,8 @@ app.post('/api/watchlists', requireAuth, async (req: AuthenticatedRequest, res) 
     session.watchlists.push(watchlist);
     session.activeWatchlistId = watchlist.id;
     res.json({ success: true, data: watchlist });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  } catch (err) {
+    sendError(res, err);
   }
 });
 
@@ -153,8 +154,8 @@ app.put('/api/watchlists/:id', requireAuth, async (req: AuthenticatedRequest, re
     watchlist.updatedAt = Date.now();
     if (setActive) session.activeWatchlistId = id;
     res.json({ success: true, data: watchlist });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  } catch (err) {
+    sendError(res, err);
   }
 });
 
@@ -181,8 +182,8 @@ app.delete('/api/watchlists/:id', requireAuth, async (req: AuthenticatedRequest,
       session.activeWatchlistId = session.watchlists[0].id;
     }
     res.json({ success: true, activeId: session.activeWatchlistId });
-  } catch (err: any) {
-    res.status(400).json({ error: err.message });
+  } catch (err) {
+    sendError(res, err);
   }
 });
 
@@ -194,8 +195,8 @@ app.get('/api/market/stocks', requireAuth, async (req: AuthenticatedRequest, res
     const watchlist = await resolveWatchlist(req, session);
     const stocks = await market.getStocks(session, watchlist?.symbols ?? []);
     res.json({ success: true, data: stocks, watchlist });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  } catch (err) {
+    sendError(res, err);
   }
 });
 
@@ -204,8 +205,8 @@ app.get('/api/market/pulse', requireAuth, async (req: AuthenticatedRequest, res)
     const session = sessionFor(req);
     const watchlist = await resolveWatchlist(req, session);
     res.json({ success: true, data: await market.getMarketPulse(session, watchlist?.symbols ?? []) });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  } catch (err) {
+    sendError(res, err);
   }
 });
 
@@ -214,8 +215,8 @@ app.get('/api/market/events', requireAuth, async (req: AuthenticatedRequest, res
     const session = sessionFor(req);
     const watchlist = await resolveWatchlist(req, session);
     res.json({ success: true, data: market.getEvents(session, watchlist?.symbols ?? []) });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  } catch (err) {
+    sendError(res, err);
   }
 });
 
@@ -234,16 +235,16 @@ app.post('/api/market/events/:id/dismiss', (req, res) => {
 app.get('/api/market/stocks/all', async (_req, res) => {
   try {
     res.json({ success: true, data: await market.getStocks(getOrCreateSession()) });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  } catch (err) {
+    sendError(res, err);
   }
 });
 
 app.get('/api/market/search', async (req, res) => {
   try {
     res.json({ success: true, data: await market.searchStocks(queryString(req.query.q, 50) ?? '') });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  } catch (err) {
+    sendError(res, err);
   }
 });
 
@@ -252,8 +253,8 @@ app.get('/api/market/stocks/:symbol', async (req, res) => {
     const detail = await market.getStockDetail(sessionFor(req), req.params.symbol.toUpperCase());
     if (!detail) return res.status(404).json({ error: 'Stock not found' });
     res.json({ success: true, data: detail });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  } catch (err) {
+    sendError(res, err);
   }
 });
 
@@ -301,5 +302,8 @@ app.post('/api/demo/reset', (req, res) => {
     awayFormatted: formatDuration(session.simulatedAwaySeconds),
   });
 });
+
+// JSON errors without stack traces (must be registered after all routes).
+app.use(errorHandler);
 
 export default app;

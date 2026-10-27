@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Watchlist } from '../../src/types.js';
 import { BASE_STOCKS } from '../data/stockUniverse.js';
 import { getSupabaseConfig, isSupabaseConfigured } from '../config.js';
+import { ClientError } from '../errors.js';
 
 // User-scoped client: every query runs as the user, so PostgreSQL Row-Level Security applies.
 function createUserClient(token: string) {
@@ -160,7 +161,7 @@ export const supabaseRepository = {
     // First, check if it's the default watchlist (RLS might allow delete, but app logic forbids)
     const { data: wl } = await db.from('watchlists').select('is_default').eq('id', watchlistId).single();
     if (wl?.is_default) {
-      throw new Error('Cannot delete the default watchlist');
+      throw new ClientError('Cannot delete the default watchlist');
     }
 
     const { error } = await db.from('watchlists').delete().eq('id', watchlistId);
