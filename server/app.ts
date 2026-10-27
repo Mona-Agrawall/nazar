@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express, { Request } from 'express';
+import helmet from 'helmet';
 import { Watchlist } from '../src/types.js';
 import { AuthenticatedRequest, requireAuth } from './middleware/auth.js';
 import { supabaseRepository } from './db/supabaseRepository.js';
@@ -16,6 +17,31 @@ import { formatDuration } from './utils/formatDuration.js';
 import { MAX_AWAY_SECONDS, isValidId, parseName, parseSymbols, queryString } from './validation.js';
 
 const app = express();
+app.disable('x-powered-by');
+app.use(
+  helmet({
+    // Vite's dev server injects inline scripts, so the CSP is only enforced for the production build.
+    contentSecurityPolicy:
+      process.env.NODE_ENV === 'production'
+        ? {
+            directives: {
+              defaultSrc: ["'self'"],
+              scriptSrc: ["'self'"],
+              // React/motion set inline style attributes; Google Fonts serves the stylesheet.
+              styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+              fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+              imgSrc: ["'self'", 'data:'],
+              connectSrc: [
+                "'self'",
+                'https://*.supabase.co',
+                'wss://*.supabase.co',
+                process.env.VITE_SUPABASE_URL || '',
+              ].filter(Boolean),
+            },
+          }
+        : false,
+  }),
+);
 app.use(express.json());
 
 // Fire-and-forget so serverless cold starts are not delayed.
