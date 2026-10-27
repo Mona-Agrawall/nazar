@@ -31,6 +31,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
   const [hoveredPoint, setHoveredPoint] = useState<(PricePoint & { x: number; y: number }) | null>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [isExplanationLoading, setIsExplanationLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   // Escape key
@@ -45,27 +47,39 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
   // Load stock detail, then its explanation
   useEffect(() => {
     if (!symbol) return;
+    // Ignore responses for a symbol that is no longer shown
+    let cancelled = false;
     setLoading(true);
+    setLoadError(null);
     setStockDetail(null);
     setExplanation(null);
 
     api
       .getStockDetail(symbol)
       .then((data) => {
+        if (cancelled) return;
         setStockDetail(data);
         setLoading(false);
 
         // Explanation is built from the stock's computed facts
         setIsExplanationLoading(true);
-        return api.getExplanation(data);
+        return api.getExplanation(data).then((text) => {
+          if (!cancelled) setExplanation(text);
+        });
       })
-      .then(setExplanation)
-      .catch(() => {
+      .catch((err) => {
+        if (cancelled) return;
         setLoading(false);
-        setExplanation(null);
+        setLoadError(err instanceof Error ? err.message : 'Could not load this stock.');
       })
-      .finally(() => setIsExplanationLoading(false));
-  }, [symbol]);
+      .finally(() => {
+        if (!cancelled) setIsExplanationLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [symbol, reloadKey]);
 
   if (!symbol) return null;
 
@@ -165,7 +179,18 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ symbol, onCl
           </button>
         </div>
 
-        {loading || !stockDetail ? (
+        {loadError ? (
+          <div className="p-12 text-center text-[var(--color-muted)]" role="alert">
+            <p className="text-sm text-[var(--color-ink)] mb-1">Couldn't load {symbol}.</p>
+            <p className="text-xs font-normal mb-4">{loadError}</p>
+            <button
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="px-4 py-1.5 rounded-full bg-[var(--color-panel)] hover:bg-[var(--color-border-soft)] border border-[var(--color-border)] text-xs text-[var(--color-ink)] transition-colors"
+            >
+              Try again
+            </button>
+          </div>
+        ) : loading || !stockDetail ? (
           <div className="p-12 text-center text-[var(--color-muted)]" role="status" aria-label="Loading stock data">
             <div
               className="w-6 h-6 border-2 border-[var(--color-green)] border-t-transparent rounded-full animate-spin mx-auto mb-3"
