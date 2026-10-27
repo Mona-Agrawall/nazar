@@ -151,7 +151,7 @@ app.get('/api/market/stocks', requireAuth, async (req: AuthenticatedRequest, res
   try {
     const session = sessionFor(req);
     const watchlist = await resolveWatchlist(req, session);
-    const stocks = await market.getStocks(session, watchlist?.symbols);
+    const stocks = await market.getStocks(session, watchlist?.symbols ?? []);
     res.json({ success: true, data: stocks, watchlist });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -162,7 +162,7 @@ app.get('/api/market/pulse', requireAuth, async (req: AuthenticatedRequest, res)
   try {
     const session = sessionFor(req);
     const watchlist = await resolveWatchlist(req, session);
-    res.json({ success: true, data: await market.getMarketPulse(session, watchlist?.symbols || []) });
+    res.json({ success: true, data: await market.getMarketPulse(session, watchlist?.symbols ?? []) });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -172,7 +172,7 @@ app.get('/api/market/events', requireAuth, async (req: AuthenticatedRequest, res
   try {
     const session = sessionFor(req);
     const watchlist = await resolveWatchlist(req, session);
-    res.json({ success: true, data: market.getEvents(session, watchlist?.symbols) });
+    res.json({ success: true, data: market.getEvents(session, watchlist?.symbols ?? []) });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

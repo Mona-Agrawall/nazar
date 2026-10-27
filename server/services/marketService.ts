@@ -45,9 +45,12 @@ export function getIndices(): MarketIndex[] {
   return MARKET_INDICES;
 }
 
-/** Returns stocks enriched with attention scores and the change since the user's last visit. */
+/**
+ * Returns stocks enriched with attention scores and the change since the user's last visit.
+ * Omitting `symbols` returns the whole universe; an empty array returns no stocks.
+ */
 export async function getStocks(session: UserSession, symbols?: string[]): Promise<Stock[]> {
-  const list = symbols && symbols.length > 0 ? BASE_STOCKS.filter((s) => symbols.includes(s.symbol)) : BASE_STOCKS;
+  const list = symbols ? BASE_STOCKS.filter((s) => symbols.includes(s.symbol)) : BASE_STOCKS;
 
   return Promise.all(
     list.map(async (s) => {
@@ -153,7 +156,7 @@ export async function getStockDetail(session: UserSession, symbol: string): Prom
 export function getEvents(session: UserSession, symbols?: string[]): MarketEvent[] {
   const startOfAway = Date.now() - session.simulatedAwaySeconds * 1000;
 
-  return EVENT_TEMPLATES.filter((e) => !symbols || symbols.length === 0 || symbols.includes(e.stockSymbol))
+  return EVENT_TEMPLATES.filter((e) => !symbols || symbols.includes(e.stockSymbol))
     .map(({ offsetSeconds, ...event }) => ({
       ...event,
       timestamp: startOfAway + offsetSeconds * 1000,
