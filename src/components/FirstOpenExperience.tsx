@@ -43,6 +43,7 @@ export const FirstOpenExperience: React.FC<FirstOpenExperienceProps> = ({ onComp
     }
 
     let progress = 0;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const startTime = performance.now();
     const duration = 1800; // 1.8 seconds fast cinematic intro
 
@@ -59,7 +60,8 @@ export const FirstOpenExperience: React.FC<FirstOpenExperienceProps> = ({ onComp
 
     const render = (time: number) => {
       const elapsed = time - startTime;
-      progress = Math.min(1, elapsed / duration);
+      // Reduced motion: draw the finished chart in a single frame.
+      progress = reduceMotion ? 1 : Math.min(1, elapsed / duration);
 
       ctx.clearRect(0, 0, width, height);
 

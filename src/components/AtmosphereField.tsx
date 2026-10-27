@@ -12,11 +12,14 @@ export const AtmosphereField: React.FC = () => {
     let animId: number;
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
+    // With reduced motion the field is drawn once (and on resize) instead of animating every frame.
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const handleResize = () => {
       if (!canvas) return;
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
+      if (reduceMotion) render();
     };
     window.addEventListener('resize', handleResize);
 
@@ -91,7 +94,7 @@ export const AtmosphereField: React.FC = () => {
         ctx.fill();
       }
 
-      animId = requestAnimationFrame(render);
+      if (!reduceMotion) animId = requestAnimationFrame(render);
     };
 
     render();

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import { AppTab, Stock, MarketIndex, MarketEvent, Watchlist, MarketPulse, FeedStatus } from './types';
 import { api } from './services/api';
 import { createSerialQueue } from './lib/serialQueue';
@@ -525,9 +525,12 @@ function AuthGate() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AuthGate />
-      </AuthProvider>
+      {/* Framer-motion animations follow the OS "reduce motion" setting */}
+      <MotionConfig reducedMotion="user">
+        <AuthProvider>
+          <AuthGate />
+        </AuthProvider>
+      </MotionConfig>
     </ErrorBoundary>
   );
 }
